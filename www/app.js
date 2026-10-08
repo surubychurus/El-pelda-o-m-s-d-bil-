@@ -62,50 +62,109 @@ async function ensureChannel(importance) {
   return id;
 }
 
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const pad = (x) => String(x).padStart(2, '0');
+const MAX_OCC = 30;
+
+// Placeholders: {fecha} {hora} {dia} {mes} {año} {n} {random:a|b|c}
+function fill(text, date, n) {
+  if (!text) return text;
+  return text
+    .replace(/\{fecha\}/gi, `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`)
+    .replace(/\{hora\}/gi, `${pad(date.getHours())}:${pad(date.getMinutes())}`)
+    .replace(/\{dia\}/gi, DIAS[date.getDay()])
+    .replace(/\{mes\}/gi, MESES[date.getMonth()])
+    .replace(/\{año\}/gi, String(date.getFullYear()))
+    .replace(/\{n\}/gi, String(n))
+    .replace(/\{random:([^}]+)\}/gi, (_, opts) => { const a = opts.split('|'); return a[Math.floor(Math.random() * a.length)]; });
+}
+const hasPlaceholders = (d) => /\{[^}]+\}/.test(`${d.title} ${d.body} ${d.bigText}`);
+
+function addStep(start, repeat, k) {
+  const d = new Date(start);
+  const ms = { minute: 60e3, hour: 3600e3, day: 86400e3, week: 7 * 86400e3 }[repeat];
+  if (ms) return new Date(d.getTime() + ms * k);
+  if (repeat === 'month') d.setMonth(d.getMonth() + k); else d.setFullYear(d.getFullYear() + k);
+  return d;
+}
+
+async function buildOne(data, typeId, channelId, date, n, slot, every) {
+  const schedule = { at: date, allowWhileIdle: true };
+  if (every) schedule.every = every;
+  const big = fill(data.bigText, date, n);
+  return {
+    id: data.group * 100 + slot, title: fill(data.title, date, n), body: fill(data.body, date, n) || ' ',
+    largeBody: big || undefined, summaryText: big ? fill(data.title, date, n) : undefined,
+    smallIcon: data.icon, iconColor: data.color, channelId,
+    ongoing: data.ongoing, autoCancel: !data.ongoing, actionTypeId: typeId, schedule,
+  };
+}
+
+// Programa (o reprograma) un grupo. Con repetición + placeholders se expanden las próximas ocurrencias.
 async function schedule(data) {
-  const typeId = await registerActions(data.id, data.buttons);
+  const typeId = await registerActions(data.group, data.buttons);
   const channelId = await ensureChannel(data.importance);
-  const schedule = { at: new Date(data.at), allowWhileIdle: true };
-  if (data.repeat) schedule.every = data.repeat;
-  await LN.schedule({
-    notifications: [{
-      id: data.id, title: data.title, body: data.body || ' ',
-      largeBody: data.bigText || undefined, summaryText: data.bigText ? data.title : undefined,
-      smallIcon: data.icon, iconColor: data.color, channelId,
-      ongoing: data.ongoing, autoCancel: !data.ongoing,
-      actionTypeId: typeId, schedule, extra: { snoozeOf: data.id },
-    }],
-  });
-  const all = store.get(); all[data.id] = data; store.set(all);
+  const start = new Date(data.at);
+  const list = [];
+  if (data.repeat && hasPlaceholders(data)) {
+    data.expand = true;
+    let k = 0;
+    while (addStep(start, data.repeat, k) <= new Date()) k++;
+    for (let i = 0; i < MAX_OCC; i++) list.push(await buildOne(data, typeId, channelId, addStep(start, data.repeat, k + i), k + i + 1, i, null));
+  } else {
+    list.push(await buildOne(data, typeId, channelId, start, 1, 0, data.repeat || undefined));
+  }
+  await LN.schedule({ notifications: list });
+  const all = store.get(); all[data.group] = data; store.set(all);
+}
+
+async function cancelGroup(group) {
+  const { notifications } = await LN.getPending();
+  const ids = notifications.filter((n) => Math.floor(n.id / 100) === Number(group)).map((n) => ({ id: n.id }));
+  if (ids.length) await LN.cancel({ notifications: ids });
+}
+
+// Al abrir la app: renueva las ocurrencias de las repetidas con placeholders
+async function refreshExpanded() {
+  for (const d of Object.values(store.get())) {
+    if (!d.expand) continue;
+    await cancelGroup(d.group);
+    await schedule(d);
+  }
 }
 
 async function reregisterAll() {
   const all = store.get();
-  for (const d of Object.values(all)) await registerActions(d.id, d.buttons);
+  for (const d of Object.values(all)) await registerActions(d.group, d.buttons);
 }
 
 async function refreshList() {
   const { notifications } = await LN.getPending();
   const all = store.get();
-  // limpia lo que ya no está pendiente y no se repite
-  const pend = new Set(notifications.map((n) => n.id));
-  for (const id of Object.keys(all)) if (!pend.has(Number(id))) delete all[id];
+  const groups = {};
+  for (const n of notifications) (groups[Math.floor(n.id / 100)] ||= []).push(n);
+  for (const g of Object.keys(all)) if (!groups[g]) delete all[g];
   store.set(all);
-  $('list').innerHTML = notifications.length ? '' : '<small>Nada programado.</small>';
-  for (const n of notifications) {
-    const d = all[n.id];
+  $('list').innerHTML = Object.keys(groups).length ? '' : '<small>Nada programado.</small>';
+  for (const [g, items] of Object.entries(groups)) {
+    const d = all[g];
+    items.sort((a, b) => new Date(a.schedule?.at || 0) - new Date(b.schedule?.at || 0));
+    const next = items[0].schedule?.at ? new Date(items[0].schedule.at) : (d ? new Date(d.at) : null);
     const li = document.createElement('li');
-    const when = d ? new Date(d.at).toLocaleString() + (d.repeat ? ` · cada ${d.repeat}` : '') : '';
-    li.innerHTML = `<div><strong>${ICONS[d?.icon] || '🔔'} ${n.title}</strong><small>${when}</small></div><button>Borrar</button>`;
-    li.querySelector('button').onclick = async () => { await LN.cancel({ notifications: [{ id: n.id }] }); refreshList(); };
+    const when = (next ? next.toLocaleString() : '') + (d?.repeat ? ` · cada ${d.repeat}` : '');
+    li.innerHTML = `<div><strong>${ICONS[d?.icon] || '🔔'} ${items[0].title}</strong><small>${when}</small></div><button>Borrar</button>`;
+    li.querySelector('button').onclick = async () => { await cancelGroup(g); refreshList(); };
     $('list').append(li);
   }
 }
 
+const newGroup = () => Math.floor(Date.now() / 1000) % 20000000;
+
 function formData(atOverride) {
   const at = atOverride || new Date(`${$('date').value}T${$('time').value}`).toISOString();
   return {
-    id: Math.floor(Date.now() % 2147483000),
+    group: newGroup(),
     title: $('title').value.trim(), body: $('body').value.trim(), bigText: $('bigText').value.trim(),
     at, repeat: $('repeat').value || null, importance: $('importance').value,
     icon, color: $('color').value, ongoing: $('ongoing').checked, buttons: readButtons(),
@@ -122,6 +181,7 @@ async function main() {
   let perm = await LN.checkPermissions();
   if (perm.display !== 'granted') perm = await LN.requestPermissions();
   await reregisterAll();
+  await refreshExpanded();
 
   $('form').onsubmit = async (e) => {
     e.preventDefault();
@@ -137,15 +197,20 @@ async function main() {
   LN.addListener('localNotificationActionPerformed', async (ev) => {
     const kind = ev.actionId.split('_')[0];
     const n = ev.notification;
-    const d = store.get()[n.id];
+    const d = store.get()[Math.floor(n.id / 100)];
     if (kind === 'snooze' && d) {
-      await schedule({ ...d, id: Math.floor(Date.now() % 2147483000), at: new Date(Date.now() + 10 * 60000).toISOString(), repeat: null });
+      await schedule({ ...d, group: newGroup(), expand: false, at: new Date(Date.now() + 10 * 60000).toISOString(), repeat: null });
       refreshList();
     }
     const li = document.createElement('li');
     li.innerHTML = `<div><strong>${n.title}</strong><small>Botón: ${ev.actionId}${ev.inputValue ? ` → "${ev.inputValue}"` : ''} · ${new Date().toLocaleTimeString()}</small></div>`;
     $('log').prepend(li);
   });
+  const preview = () => {
+    const d = formData(new Date().toISOString());
+    $('preview').textContent = hasPlaceholders(d) ? `Vista previa: ${fill(d.title, new Date(), 1)} — ${fill(d.body, new Date(), 1)}` : '';
+  };
+  ['title', 'body', 'bigText'].forEach((id) => $(id).addEventListener('input', preview));
   refreshList();
 }
 main();
