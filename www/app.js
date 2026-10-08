@@ -33,14 +33,15 @@ function addButtonRow(label = '', kind = 'read', minutes = 10) {
   if ($('buttons').children.length >= 3) return;
   const row = document.createElement('div');
   row.className = 'btnrow';
-  row.innerHTML = `<input class="lbl" placeholder="Texto del botón" maxlength="24" value="${label}">
-    <select>${Object.entries(BTN_KINDS).map(([k, v]) => `<option value="${k}"${k === kind ? ' selected' : ''}>${v}</option>`).join('')}</select>
-    <input class="min" type="number" min="1" max="1440" value="${minutes}" title="minutos">
-    <button type="button" class="ghost">✕</button>`;
+  row.innerHTML = `<input class="lbl" placeholder="Texto del botón" maxlength="24">
+    <div class="sub"><select>${Object.entries(BTN_KINDS).map(([k, v]) => `<option value="${k}"${k === kind ? ' selected' : ''}>${v}</option>`).join('')}</select>
+    <input class="min" type="number" min="1" max="1440" value="${minutes}" title="minutos"></div>
+    <button type="button" class="del" aria-label="Quitar">✕</button>`;
+  row.querySelector('.lbl').value = label;
   const sel = row.querySelector('select'), min = row.querySelector('.min');
   const sync = () => { min.style.display = NEEDS_MIN.has(sel.value) ? '' : 'none'; };
-  sel.onchange = sync; sync();
-  row.querySelector('button').onclick = () => row.remove();
+  sel.addEventListener('change', sync); sync();
+  row.querySelector('.del').onclick = () => { row.remove(); renderPreview(); };
   $('buttons').append(row);
 }
 
@@ -143,14 +144,17 @@ async function refreshList() {
   for (const n of notifications) (groups[Math.floor(n.id / 100)] ||= []).push(n);
   for (const g of Object.keys(all)) if (!groups[g]) delete all[g];
   store.set(all);
-  $('list').innerHTML = Object.keys(groups).length ? '' : '<small>Nada programado.</small>';
+  const keys = Object.keys(groups);
+  $('count').textContent = keys.length; $('count').hidden = !keys.length;
+  $('list').innerHTML = keys.length ? '' : '<div class="empty">Nada programado todavía</div>';
   for (const [g, items] of Object.entries(groups)) {
     const d = all[g];
     items.sort((a, b) => a.at - b.at);
+    const extra = [d?.repeat ? `cada ${d.repeat}` : '', d?.image ? '🖼' : '', d?.chrono?.mode === 'up' ? '⏱' : d?.chrono?.mode === 'down' ? `⏳ ${d.chrono.minutes} min` : '', d?.buttons?.length ? `${d.buttons.length} botón(es)` : ''].filter(Boolean).join(' · ');
     const li = document.createElement('li');
-    const extra = [d?.repeat ? `cada ${d.repeat}` : '', d?.image ? '🖼' : '', d?.chrono?.mode === 'up' ? '⏱ cronómetro' : d?.chrono?.mode === 'down' ? `⏳ ${d.chrono.minutes} min` : '', d?.buttons?.length ? `${d.buttons.length} botón(es)` : ''].filter(Boolean).join(' · ');
-    li.innerHTML = `<div><strong>${ICONS[items[0].icon] || '🔔'} ${items[0].title}</strong><small>${new Date(items[0].at).toLocaleString()}${extra ? ' · ' + extra : ''}</small></div><button>Borrar</button>`;
-    li.querySelector('button').onclick = async () => { await cancelGroup(g); refreshList(); };
+    li.innerHTML = `<div class="emoji">${ICONS[items[0].icon] || '🔔'}</div><div class="txt"><strong></strong><small>${new Date(items[0].at).toLocaleString()}${extra ? ' · ' + extra : ''}</small></div><button class="del">Borrar</button>`;
+    li.querySelector('strong').textContent = items[0].title;
+    li.querySelector('.del').onclick = async () => { await cancelGroup(g); refreshList(); };
     $('list').append(li);
   }
 }
@@ -172,55 +176,117 @@ function formData(atOverride) {
 
 const addLog = (e, top = true) => {
   const li = document.createElement('li');
-  li.innerHTML = `<div><strong>${e.title}</strong><small>${e.label}${e.text ? ` → "${e.text}"` : ''} · ${new Date(e.t).toLocaleString()}</small></div>`;
+  li.innerHTML = '<div class="emoji">✅</div><div class="txt"><strong></strong><small></small></div>';
+  li.querySelector('strong').textContent = e.title;
+  li.querySelector('small').textContent = `${e.label}${e.text ? ` → "${e.text}"` : ''} · ${new Date(e.t).toLocaleString()}`;
   top ? $('log').prepend(li) : $('log').append(li);
 };
 
+function showError(msg) {
+  const b = $('banner');
+  b.hidden = false; b.textContent = (b.textContent ? b.textContent + '\n' : '') + msg;
+}
+window.addEventListener('error', (e) => showError('Error: ' + e.message));
+window.addEventListener('unhandledrejection', (e) => showError('Error: ' + (e.reason?.message || e.reason)));
+
+function renderPreview() {
+  const now = new Date();
+  const d = formData(now.toISOString());
+  $('pvIcon').textContent = ICONS[d.icon] || '🔔'; $('pvIcon').style.background = d.color;
+  $('pvTitle').textContent = fill(d.title, now, 1) || 'Título';
+  $('pvBody').textContent = fill(d.body, now, 1) || 'El texto aparecerá aquí';
+  const img = $('pvImg');
+  img.hidden = !(imageData && d.imageMode === 'big'); if (imageData) img.src = $('imgPrev').src;
+  $('pvChrono').textContent = d.chrono.mode === 'up' ? '00:00' : d.chrono.mode === 'down' ? `${String(d.chrono.minutes).padStart(2, '0')}:00` : '';
+  $('pvActions').innerHTML = '';
+  for (const b of d.buttons) { const s = document.createElement('span'); s.textContent = b.title; $('pvActions').append(s); }
+}
+
+function setTab(name) {
+  for (const v of ['crear', 'lista', 'log']) $(`view-${v}`).hidden = v !== name;
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  $('actionbar').hidden = name !== 'crear';
+  document.body.classList.toggle('no-bar', name !== 'crear');
+  if (name === 'lista') refreshList().catch((e) => showError(e.message));
+  window.scrollTo(0, 0);
+}
+
+function setPerm(state) {
+  const p = $('permPill');
+  p.textContent = state === 'granted' ? '🔔 Permiso OK' : '🔕 Sin permiso';
+  p.className = 'pill ' + (state === 'granted' ? 'ok' : 'bad');
+  p.onclick = async () => { try { setPerm((await RN.requestPermissions()).display); } catch (e) { showError(e.message); } };
+}
+
 async function main() {
-  if (!RN || !window.Capacitor?.isNativePlatform?.()) { document.body.insertAdjacentHTML('afterbegin', '<p style="padding:16px">Abre esto dentro de la app Android (Capacitor).</p>'); return; }
+  document.querySelectorAll('.tabs button').forEach((b) => { b.onclick = () => setTab(b.dataset.tab); });
   renderIcons(); addButtonRow('Responder', 'reply'); addButtonRow('Leído', 'read');
-  $('addBtn').onclick = () => addButtonRow();
-  $('whatsapp').onclick = () => { $('buttons').innerHTML = ''; addButtonRow('Responder', 'reply'); addButtonRow('Marcar como leído', 'read'); };
+  $('addBtn').onclick = () => { addButtonRow(); renderPreview(); };
+  $('whatsapp').onclick = () => { $('buttons').innerHTML = ''; addButtonRow('Responder', 'reply'); addButtonRow('Marcar como leído', 'read'); renderPreview(); };
   const now = new Date(Date.now() + 5 * 60000);
   $('date').value = now.toLocaleDateString('sv'); $('time').value = now.toTimeString().slice(0, 5);
 
-  $('chrono').onchange = () => { $('chronoMin').style.display = $('chrono').value === 'down' ? '' : 'none'; };
-  $('chrono').onchange();
+  // variables: se insertan en el último campo de texto usado
+  let lastField = $('title');
+  ['title', 'body', 'bigText'].forEach((id) => $(id).addEventListener('focus', () => { lastField = $(id); }));
+  document.querySelectorAll('#vars button').forEach((b) => {
+    b.onclick = () => {
+      const f = lastField, i = f.selectionStart ?? f.value.length;
+      f.value = f.value.slice(0, i) + b.dataset.v + f.value.slice(f.selectionEnd ?? i);
+      f.focus(); f.selectionStart = f.selectionEnd = i + b.dataset.v.length; renderPreview();
+    };
+  });
 
+  $('chrono').onchange = () => { $('chronoWrap').style.display = $('chrono').value === 'down' ? '' : 'none'; renderPreview(); };
+  $('chrono').onchange();
   $('imageFile').onchange = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
-    const url = await loadImage(f);
-    imageData = url.split(',')[1];
-    $('imgPrev').src = url; $('imgBox').style.display = '';
+    try {
+      const url = await loadImage(f);
+      imageData = url.split(',')[1];
+      $('imgPrev').src = url; $('imgBox').hidden = false; renderPreview();
+    } catch (err) { showError('No se pudo leer la imagen'); }
   };
-  $('imgClear').onclick = () => { imageData = null; $('imageFile').value = ''; $('imgBox').style.display = 'none'; };
+  $('imgClear').onclick = () => { imageData = null; $('imageFile').value = ''; $('imgBox').hidden = true; renderPreview(); };
+  $('form').addEventListener('input', renderPreview);
+  $('form').addEventListener('change', renderPreview);
+  renderPreview();
 
-  let perm = await RN.checkPermissions();
-  if (perm.display !== 'granted') perm = await RN.requestPermissions();
-  await refreshExpanded();
+  if (!RN || !window.Capacitor?.isNativePlatform?.()) {
+    showError('Esta pantalla solo funciona dentro de la app Android (Capacitor).');
+    return;
+  }
 
+  // Los botones se enlazan ANTES de pedir permisos para que nunca queden muertos
   $('form').onsubmit = async (e) => {
     e.preventDefault();
-    const d = formData();
-    if (new Date(d.at) <= new Date() && !d.repeat) { alert('Elige una fecha futura'); return; }
-    await schedule(d); refreshList();
+    try {
+      const d = formData();
+      if (new Date(d.at) <= new Date() && !d.repeat) { alert('Elige una fecha futura'); return; }
+      await schedule(d); await refreshList(); setTab('lista');
+    } catch (err) { showError('No se pudo programar: ' + (err.message || err)); }
   };
   $('testNow').onclick = async () => {
-    if (!$('title').value.trim()) { alert('Pon un título'); return; }
-    await schedule(formData(new Date(Date.now() + 3000).toISOString())); refreshList();
+    try {
+      if (!$('title').value.trim()) { alert('Pon un título'); return; }
+      await schedule(formData(new Date(Date.now() + 3000).toISOString())); await refreshList();
+    } catch (err) { showError('No se pudo enviar: ' + (err.message || err)); }
   };
-  $('clearLog').onclick = async () => { await RN.clearEvents(); $('log').innerHTML = ''; };
+  $('clearLog').onclick = async () => { try { await RN.clearEvents(); $('log').innerHTML = ''; } catch (err) { showError(err.message); } };
 
-  const preview = () => {
-    const d = formData(new Date().toISOString());
-    $('preview').textContent = hasPlaceholders(d) ? `Vista previa: ${fill(d.title, new Date(), 1)} — ${fill(d.body, new Date(), 1)}` : '';
-  };
-  ['title', 'body', 'bigText'].forEach((id) => $(id).addEventListener('input', preview));
+  try {
+    let perm = await RN.checkPermissions();
+    if (perm.display !== 'granted') perm = await RN.requestPermissions();
+    setPerm(perm.display);
+  } catch (err) { setPerm('denied'); showError('Permisos: ' + (err.message || err)); }
 
-  RN.addListener('action', (e) => { addLog(e); refreshList(); });
-  const { events } = await RN.getEvents();
-  events.forEach((e) => addLog(e, false));
-  refreshList();
+  try { await refreshExpanded(); } catch (err) { showError('Repeticiones: ' + (err.message || err)); }
+  try {
+    RN.addListener('action', (e) => { addLog(e); refreshList(); });
+    const { events } = await RN.getEvents();
+    events.forEach((e) => addLog(e, false));
+    await refreshList();
+  } catch (err) { showError('Plugin: ' + (err.message || err)); }
 }
-main();
+main().catch((e) => showError('Error al iniciar: ' + (e.message || e)));
