@@ -25,3 +25,6 @@ small{color:var(--mut);display:block;margin-top:6px}
 ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
 li{display:flex;justify-content:space-between;align-items:center;gap:8px}
 li small{margin:2px 0 0}li button{padding:8px 12px;background:#e74c3c;color:#fff}
+#imgBox{display:flex;align-items:center;gap:10px}#imgPrev{max-height:70px;border-radius:8px}
+.btnrow .min{flex:1;min-width:0}.mini{padding:4px 10px;font-size:.75rem;margin-left:8px}
+fieldset .ghost{margin-right:6px}input[type=file]{padding:6px}

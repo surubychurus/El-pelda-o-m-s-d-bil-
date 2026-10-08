@@ -45,6 +45,27 @@
       </label>
     </div>
 
+    <label>Imagen en la notificación</label>
+    <div class="row">
+      <input id="imageFile" type="file" accept="image/*">
+      <select id="imageMode">
+        <option value="big">Grande (al expandir)</option>
+        <option value="icon">Icono lateral</option>
+      </select>
+    </div>
+    <div id="imgBox" style="display:none"><img id="imgPrev" alt=""> <button type="button" id="imgClear" class="ghost">Quitar imagen</button></div>
+
+    <div class="row">
+      <label>Cronómetro / temporizador
+        <select id="chrono">
+          <option value="none">Ninguno</option>
+          <option value="up">Cronómetro (cuenta hacia arriba)</option>
+          <option value="down">Temporizador (cuenta atrás)</option>
+        </select>
+      </label>
+      <label>Minutos <input id="chronoMin" type="number" min="1" max="1440" value="5"></label>
+    </div>
+
     <label>Icono</label>
     <div id="icons" class="icons"></div>
 
@@ -57,7 +78,8 @@
       <legend>Botones (máx. 3)</legend>
       <div id="buttons"></div>
       <button type="button" id="addBtn" class="ghost">+ Añadir botón</button>
-      <small>Un botón "Posponer 10 min" reprograma la notificación; "Con texto" abre una caja de respuesta.</small>
+      <button type="button" id="whatsapp" class="ghost">Estilo WhatsApp (Responder + Leído)</button>
+      <small>Leído, Posponer, Responder y Temporizador actúan sin abrir la app. El temporizador de un botón lanza una cuenta atrás y avisa al terminar.</small>
     </fieldset>
 
     <button type="submit" class="primary">Programar</button>
@@ -67,7 +89,7 @@
   <h2>Programadas</h2>
   <ul id="list"></ul>
 
-  <h2>Respuestas a botones</h2>
+  <h2>Acciones realizadas <button type="button" id="clearLog" class="ghost mini">Limpiar</button></h2>
   <ul id="log"></ul>
 </main>
 <script src="app.js"></script>

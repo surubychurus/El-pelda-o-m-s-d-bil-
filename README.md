@@ -12,6 +12,6 @@ repetición, prioridad, icono, color, notificación fija y hasta 3 botones
 Instala el APK en el móvil (permite "orígenes desconocidos") y acepta el permiso de notificaciones.
 
 ## Estructura
-- `www/` interfaz (HTML/JS sin bundler, usa `@capacitor/local-notifications`).
+- `www/` interfaz (HTML/JS sin bundler). La lógica de notificaciones es un plugin nativo propio: `android/app/src/main/java/com/example/notificaciones/`.
 - `android/app/src/main/res/drawable/ic_stat_*.xml` iconos disponibles; añade más ahí y en `ICONS` de `www/app.js`.
 - Tras editar `www/`: `npm run sync`.
