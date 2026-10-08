@@ -1,4 +1,6 @@
-const RN = window.Capacitor?.registerPlugin?.('RichNotif');
+const cap = window.Capacitor;
+// El puente nativo inyecta los plugins en Capacitor.Plugins (no se carga @capacitor/core aparte)
+const RN = cap?.Plugins?.RichNotif || cap?.registerPlugin?.('RichNotif');
 const $ = (id) => document.getElementById(id);
 const ICONS = { ic_stat_notif: '🔔', ic_stat_star: '⭐', ic_stat_heart: '❤️', ic_stat_check: '✅', ic_stat_alarm: '⏰', ic_stat_gift: '🎁' };
 const BTN_KINDS = {
@@ -253,7 +255,7 @@ async function main() {
   $('form').addEventListener('change', renderPreview);
   renderPreview();
 
-  if (!RN || !window.Capacitor?.isNativePlatform?.()) {
+  if (!RN) {
     showError('Esta pantalla solo funciona dentro de la app Android (Capacitor).');
     return;
   }
