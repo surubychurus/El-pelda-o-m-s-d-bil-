@@ -1,0 +1,11 @@
+{
+  "appId": "com.example.notificaciones",
+  "appName": "Notificaciones",
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notif",
+      "iconColor": "#6C5CE7"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "notificaciones-custom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App Android (Capacitor) para programar notificaciones personalizadas",
+  "scripts": {
+    "sync": "cap sync android",
+    "open": "cap open android",
+    "apk": "cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/local-notifications": "^8.3.1"
+  }
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Notificaciones</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>🔔 Notificaciones custom</h1>
+
+  <form id="form">
+    <label>Título <input id="title" required maxlength="80" placeholder="Beber agua"></label>
+    <label>Texto <textarea id="body" rows="2" placeholder="Es hora de hidratarse"></textarea></label>
+    <label>Texto largo (al expandir) <textarea id="bigText" rows="3" placeholder="Opcional"></textarea></label>
+
+    <div class="row">
+      <label>Fecha <input id="date" type="date" required></label>
+      <label>Hora <input id="time" type="time" required></label>
+    </div>
+
+    <div class="row">
+      <label>Repetir
+        <select id="repeat">
+          <option value="">No repetir</option>
+          <option value="minute">Cada minuto</option>
+          <option value="hour">Cada hora</option>
+          <option value="day">Cada día</option>
+          <option value="week">Cada semana</option>
+          <option value="month">Cada mes</option>
+          <option value="year">Cada año</option>
+        </select>
+      </label>
+      <label>Prioridad
+        <select id="importance">
+          <option value="5">Máxima (emergente)</option>
+          <option value="4" selected>Alta</option>
+          <option value="3">Normal</option>
+          <option value="2">Baja (silenciosa)</option>
+        </select>
+      </label>
+    </div>
+
+    <label>Icono</label>
+    <div id="icons" class="icons"></div>
+
+    <div class="row">
+      <label>Color <input id="color" type="color" value="#6c5ce7"></label>
+      <label class="check"><input id="ongoing" type="checkbox"> Fija (no se puede quitar)</label>
+    </div>
+
+    <fieldset>
+      <legend>Botones (máx. 3)</legend>
+      <div id="buttons"></div>
+      <button type="button" id="addBtn" class="ghost">+ Añadir botón</button>
+      <small>Un botón "Posponer 10 min" reprograma la notificación; "Con texto" abre una caja de respuesta.</small>
+    </fieldset>
+
+    <button type="submit" class="primary">Programar</button>
+    <button type="button" id="testNow" class="ghost">Enviar ahora (prueba)</button>
+  </form>
+
+  <h2>Programadas</h2>
+  <ul id="list"></ul>
+
+  <h2>Respuestas a botones</h2>
+  <ul id="log"></ul>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
