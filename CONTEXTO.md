@@ -1,0 +1,53 @@
+# Contexto del proyecto Manhunt
+
+Resumen para retomar el trabajo en una sesión nueva. Plan detallado en [PLAN.md](PLAN.md).
+
+## Qué es
+App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos, con posibilidad de publicarla más adelante. Idioma: español.
+
+## Reglas decididas
+- **Modos:** Clásico (1 cazador, elegido al azar o por el creador) y Equipos (N cazadores al azar).
+- **Salas** con código de 4 letras. El creador configura: duración, **espera** (ventaja para esconderse antes de que salgan los cazadores), radio de juego desde el punto de inicio (no se reduce), frecuencia y duración de la **alerta**, y qué pasa al ser capturado (eliminado o se une a los cazadores; por defecto eliminado).
+- **Alerta:** todos ven un mapa con la ubicación de todos, de forma **anónima**, con los cazadores destacados. Salta por intervalo y con botón manual del creador. Dura 1 min por defecto. Fuera de la alerta nadie ve a nadie.
+- **Captura:** el cazador escanea el **QR** del escondido, estando cerca (distancia máxima propuesta: 10 m).
+- **Login:** solo apodo, cambiable. Más adelante se podrá vincular email o Google.
+
+## Stack
+- **App:** Expo (React Native + TypeScript), Expo Router, Three.js (`@react-three/fiber`) para el radar 3D de fondo y GSAP para animaciones.
+- **Servidor:** Node + Fastify + WebSocket, JWT propio. Corre en el **VPS del usuario** (Ubuntu), con Caddy para HTTPS y systemd.
+- **Base de datos:** **Neon** (Postgres) con Drizzle y el driver `pg`. Proyecto del usuario: org `org-hidden-sea-17300164`, proyecto `holy-scene-89752778`, rama `production`.
+- **Mapa (pendiente):** recomendado MapLibre con OpenFreeMap (sin clave).
+
+## Estado (rama `ccr-cbe32dbd-uiuaay`)
+| Fase | Estado |
+|---|---|
+| 0 Base: proyecto Expo, servidor, login por apodo | Hecha |
+| 1 Salas: crear, unirse, lobby en tiempo real, configuración | Hecha |
+| 2 Partida: empezar, roles, fases con cuenta atrás, ubicación en segundo plano, radio | Hecha |
+| Estilo: radar 3D (Three.js) y animaciones (GSAP) | Hecho |
+| 3 Alerta y captura: mapa anónimo, QR, escáner, validación en servidor | **Pendiente (siguiente)** |
+| 4 Pulido: notificaciones push, resultados, reconexión, pruebas reales | Pendiente |
+| 5 Tiendas: cuentas reales, permisos y privacidad | A futuro |
+
+## Estructura del repo
+- `app/`: app Expo (`app/` pantallas, `components/`, `lib/`).
+- `server/`: servidor Fastify (`src/`, migraciones en `drizzle/`, guía en `DEPLOY.md`).
+- `.mcp.json`, `.claude/skills/neon*`, `skills-lock.json`: servidor MCP de Neon (OAuth) y skills `neon` y `neon-postgres`.
+
+## Qué se probó y qué no
+- **Probado** contra un Postgres local: todo el servidor (salas, configuración, WebSocket, expulsar, salir, empezar, fases, fin por tiempo, "volver a tu partida"). Las pantallas se vieron en navegador con el 3D renderizado por software.
+- **No probado:** la app en un móvil real (ubicación en segundo plano, permisos, rendimiento del 3D), ni nada contra el Neon real del usuario, ni el despliegue en el VPS.
+- El bundle de Android compila (`npx expo export --platform android`).
+
+## Pendiente del usuario
+1. Abrir una **sesión nueva** con el conector de Neon (OAuth) para que Claude cree las tablas y pruebe contra su Neon. Alternativa: ejecutar `npm run db:migrate` en `server/` con su `DATABASE_URL`.
+2. Subdominio con registro `A` al VPS; seguir `server/DEPLOY.md`.
+3. Para jugar con ubicación en segundo plano hace falta un **build de desarrollo** (EAS con cuenta de Expo gratuita; iOS exige Apple Developer, 99 USD/año). Expo Go no sirve para eso.
+4. Confirmar mapa: MapLibre (recomendado) o Google Maps.
+
+## Notas importantes
+- `neon init`/`neon deploy` fueron bloqueados por permisos en la sesión de Claude: los ejecuta el usuario, o se da permiso a `Bash(neon:*)`.
+- El servicio `auth` de Neon no se usa: el servidor ya tiene su propio login.
+- No pegar contraseñas ni cadenas de conexión en el chat.
+- `app/.npmrc` tiene `legacy-peer-deps=true` por un conflicto de versiones de React.
+- Reglas aún abiertas: qué pasa al salir del radio (hoy solo avisa) y al perder conexión.
