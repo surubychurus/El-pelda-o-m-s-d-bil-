@@ -32,6 +32,7 @@ App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos,
 ## Estructura del repo
 - `app/`: app Expo (`app/` pantallas, `components/`, `lib/`).
 - `server/`: servidor Fastify (`src/`, migraciones en `drizzle/`, guía en `DEPLOY.md`).
+- `GUIA_PRUEBAS.md`: cómo compilar con EAS y probar en un Android.
 - `.mcp.json`, `.claude/skills/neon*`, `skills-lock.json`: servidor MCP de Neon (OAuth) y skills `neon` y `neon-postgres`.
 
 ## Qué se probó y qué no
