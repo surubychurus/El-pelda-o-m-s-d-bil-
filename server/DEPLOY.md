@@ -24,7 +24,7 @@ sudo -u manhunt npm run build
 # 5. Servicio
 sudo cp deploy/manhunt.service /etc/systemd/system/
 sudo systemctl enable --now manhunt
-curl http://127.0.0.1:3000/health        # → {"ok":true}
+curl http://127.0.0.1:3100/health        # → {"ok":true}
 
 # 6. nginx: proxy hacia el servidor, con soporte de WebSocket
 sudo cp deploy/nginx-manhunt.conf /etc/nginx/sites-available/manhunt

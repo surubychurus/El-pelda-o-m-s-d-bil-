@@ -20,6 +20,7 @@ umask 077
 cat > .env <<ENV
 DATABASE_URL=$DB
 JWT_SECRET=$(openssl rand -hex 32)
-PORT=3000
+PORT=3100
+HOST=127.0.0.1
 ENV
 echo "Listo: server/.env creado (permisos 600)."

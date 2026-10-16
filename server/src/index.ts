@@ -101,4 +101,4 @@ app.get("/ws", { websocket: true }, (socket, req) => {
   socket.send(JSON.stringify({ type: "hello", playerId }));
 });
 
-await app.listen({ port: Number(process.env.PORT ?? 3000), host: "0.0.0.0" });
+await app.listen({ port: Number(process.env.PORT ?? 3100), host: process.env.HOST ?? "127.0.0.1" });

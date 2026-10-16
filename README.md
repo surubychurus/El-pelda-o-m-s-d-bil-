@@ -7,5 +7,5 @@ App móvil (Android e iOS) de manhunt en la vida real. Plan completo en [PLAN.md
 
 ## Desarrollo local
 1. `cd server && cp .env.example .env`, rellena `DATABASE_URL` (Neon) y `JWT_SECRET`.
-2. `npm install && npm run db:migrate && npm run dev`
-3. En `app/`, crea `.env` con `EXPO_PUBLIC_API_URL=http://<ip-de-tu-pc>:3000` y ejecuta `npx expo start`.
+2. Añade `HOST=0.0.0.0` al `.env` (para que el móvil llegue) y ejecuta `npm install && npm run db:migrate && npm run dev`
+3. En `app/`, crea `.env` con `EXPO_PUBLIC_API_URL=http://<ip-de-tu-pc>:3100` y ejecuta `npx expo start`.
