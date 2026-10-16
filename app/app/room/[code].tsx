@@ -1,10 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Location from "expo-location";
 import { useEffect, useState } from "react";
-import { Alert, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { DebugMover } from "../../components/DebugMover";
 import { Screen } from "../../components/Screen";
 import { Reveal } from "../../lib/anim";
 import { kickPlayer, leaveRoom, startGame, updateConfig, type RoomConfig } from "../../lib/api";
+import { notify, shareText } from "../../lib/dialog";
+import { getCurrentPos } from "../../lib/position";
 import { useSession } from "../../lib/session";
 import { ensureForegroundPermission } from "../../lib/tracking";
 import { colors, glow } from "../../lib/theme";
@@ -38,8 +40,8 @@ export default function Lobby() {
         return;
       }
       // El punto de inicio es donde está el creador al empezar
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      await startGame(code, pos.coords.latitude, pos.coords.longitude);
+      const pos = await getCurrentPos();
+      await startGame(code, pos.lat, pos.lng);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "No se pudo empezar");
     }
@@ -47,7 +49,7 @@ export default function Lobby() {
 
   useEffect(() => {
     if (kicked) {
-      Alert.alert("Te han expulsado de la sala");
+      notify("Te han expulsado de la sala");
       router.replace("/home");
     }
   }, [kicked, router]);
@@ -87,7 +89,7 @@ export default function Lobby() {
 
   return (
     <Screen scroll>
-      <Pressable onPress={() => Share.share({ message: `Únete a mi partida de Manhunt con el código ${room.code}` })}>
+      <Pressable onPress={() => shareText(`Únete a mi partida de Manhunt con el código ${room.code}`)}>
         <Text style={s.small}>CÓDIGO DE SALA</Text>
         <View style={s.codeRow}>
           {room.code.split("").map((ch, i) => (
@@ -177,6 +179,8 @@ export default function Lobby() {
         </Card>
       </Reveal>
       {saveError ? <Text style={s.error}>{saveError}</Text> : null}
+
+      <DebugMover />
 
       {isOwner ? <Button title="Empezar partida aquí" onPress={start} /> : <Text style={[s.muted, { textAlign: "center" }]}>Esperando a que el creador empiece...</Text>}
       <Button title="Salir de la sala" secondary onPress={leave} />

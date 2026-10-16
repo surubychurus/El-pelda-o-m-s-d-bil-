@@ -1,12 +1,14 @@
-import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, Vibration, View } from "react-native";
+import { StyleSheet, Text, Vibration, View } from "react-native";
 import { AlertMap } from "../../components/AlertMap";
+import { DebugMover } from "../../components/DebugMover";
 import { RoleReveal } from "../../components/RoleReveal";
 import { Screen } from "../../components/Screen";
 import { Pop, Pulse, Reveal } from "../../lib/anim";
 import { launchAlert, leaveRoom } from "../../lib/api";
+import { confirmAction } from "../../lib/dialog";
+import { watchPos } from "../../lib/position";
 import { useSession } from "../../lib/session";
 import { colors, textGlow } from "../../lib/theme";
 import { distanceMeters, startTracking, stopTracking } from "../../lib/tracking";
@@ -58,11 +60,11 @@ export default function Game() {
   useEffect(() => {
     if (!active || room?.originLat == null || room.originLng == null) return;
     const { originLat, originLng } = room;
-    let sub: Location.LocationSubscription | undefined;
+    let sub: { remove: () => void } | undefined;
     let cancelled = false;
-    Location.watchPositionAsync({ accuracy: Location.Accuracy.High, distanceInterval: 5 }, (pos) => {
-      setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      setDist(distanceMeters(pos.coords.latitude, pos.coords.longitude, originLat, originLng));
+    watchPos((pos) => {
+      setMe(pos);
+      setDist(distanceMeters(pos.lat, pos.lng, originLat, originLng));
     }).then((s) => (cancelled ? s.remove() : (sub = s)));
     return () => {
       cancelled = true;
@@ -93,19 +95,13 @@ export default function Game() {
   const phaseTotal = room.status === "waiting" ? room.config.waitMin * 60_000 : room.config.durationMin * 60_000;
   const progress = Math.min(1, Math.max(0, 1 - phaseMs / phaseTotal));
 
-  const leave = () =>
-    Alert.alert("¿Salir de la partida?", "Pasarás a ser espectador y no podrás volver a jugar.", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Salir",
-        style: "destructive",
-        onPress: async () => {
-          await stopTracking();
-          await leaveRoom(code).catch(() => {});
-          router.replace("/home");
-        },
-      },
-    ]);
+  const leave = async () => {
+    const ok = await confirmAction("¿Salir de la partida?", "Pasarás a ser espectador y no podrás volver a jugar.", "Salir");
+    if (!ok) return;
+    await stopTracking();
+    await leaveRoom(code).catch(() => {});
+    router.replace("/home");
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -216,6 +212,10 @@ export default function Game() {
         <Card>
           <Text style={s.hunters}>{hunters.map((h) => h.nickname).join("  ·  ") || "—"}</Text>
         </Card>
+
+        {active && (
+          <DebugMover origin={room.originLat != null && room.originLng != null ? { lat: room.originLat, lng: room.originLng } : null} />
+        )}
 
         {active && <Button title="Salir de la partida" secondary onPress={leave} />}
       </Screen>

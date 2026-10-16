@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { QrCode } from "../../components/QrCode";
 import { Screen } from "../../components/Screen";
 import { Reveal } from "../../lib/anim";
@@ -30,6 +30,11 @@ export default function MyQr() {
         {token ? (
           <Reveal delay={0.3}>
             <QrCode value={qrPayload(code, token)} size={250} />
+            {Platform.OS === "web" ? (
+              <Text selectable style={s.code}>
+                {qrPayload(code, token)}
+              </Text>
+            ) : null}
           </Reveal>
         ) : (
           <Text style={s.hint}>{error || "Cargando..."}</Text>
@@ -42,5 +47,6 @@ export default function MyQr() {
 
 const s = StyleSheet.create({
   title: { color: colors.hider, fontSize: 28, fontWeight: "900", letterSpacing: 8, textAlign: "center" },
+  code: { color: colors.muted, fontSize: 11, textAlign: "center", marginTop: 10 },
   hint: { color: colors.muted, fontSize: 14, textAlign: "center", marginTop: 8 },
 });

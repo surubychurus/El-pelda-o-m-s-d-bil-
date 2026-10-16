@@ -57,6 +57,30 @@ Para ir rápido, en la sala pon **Duración 5 min**, **Espera 1 min**, **Alerta 
 7. Sal del radio caminando y mira el aviso rojo.
 8. Bloquea la pantalla de un móvil 2 minutos y mira, en la alerta del otro, que su punto sigue moviéndose.
 
+## Probar con UN solo móvil (el navegador de tu PC hace de segundo jugador)
+Tu móvil es un jugador y el navegador del PC es el otro. En el navegador hay un **modo prueba**: un panel naranja con flechas (N, S, E y O) para mover tu posición a mano, ya que un PC no se mueve por la calle.
+
+1. En tu PC, en la carpeta `app/`:
+   ```bash
+   npm install
+   npx expo start --web
+   ```
+   Se abre `http://localhost:8081`. Usa por defecto el servidor `https://man.diferentt.cloud`.
+2. **Móvil:** crea la sala. En la configuración pon **Cazador → Elijo yo** y toca tu nombre en la lista (así tu móvil es el cazador). Pon **Espera 1 min**.
+3. **PC:** pon otro apodo y entra con el código de la sala.
+4. **Móvil:** pulsa **Empezar partida aquí**. Tu ubicación real es el centro de la partida. Déjalo quieto.
+5. **PC (escondido):** en el panel naranja pulsa **Ir al centro**, y luego **→ E** una o dos veces (20 m cada una). Eso simula que te alejaste 20-40 m del móvil.
+6. Cuando acabe la espera, lanza una alerta desde el móvil (**Lanzar alerta ahora**). En el PC verás el punto rojo del cazador.
+7. **PC:** pulsa **Mi QR**. **Móvil:** pulsa **Escanear QR** y apunta la cámara a la pantalla del PC. Debe capturarte.
+8. Para ver el rechazo por distancia, antes de escanear mueve el PC a **100 m** (botón de 100 m y una flecha): el servidor dirá "Está demasiado lejos".
+
+Límites de esta prueba:
+- El GPS del móvil dentro de casa puede variar 10-30 m, así que la distancia real nunca es exacta. El máximo de captura es 50 m.
+- El navegador no envía ubicación en segundo plano: la pestaña del PC debe quedar abierta.
+- Si el PC se queda con la pestaña oculta, el navegador puede pausarla. Mantén la ventana visible.
+- Para probar con **dos jugadores en el PC**, usa otro perfil del navegador o una ventana de incógnito (comparten sesión si no).
+- En web el mapa de la alerta es un radar plano, no el mapa real. El mapa real solo se ve en el móvil.
+
 ## 7. Si algo falla
 | Síntoma | Qué mirar |
 |---|---|

@@ -35,6 +35,10 @@ App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos,
 - `GUIA_PRUEBAS.md`: cómo compilar con EAS y probar en un Android.
 - `.mcp.json`, `.claude/skills/neon*`, `skills-lock.json`: servidor MCP de Neon (OAuth) y skills `neon` y `neon-postgres`.
 
+## Versión web (para probar con un solo móvil)
+- `npx expo start --web` en `app/`. Tiene un **modo prueba** (`components/DebugMover.tsx`) para mover la posición a mano, y un campo para pegar el código del QR en el escáner. Hay versiones `.web.ts` de `storage`, `position` y `tracking`. En web no hay ubicación en segundo plano.
+- Se probó con dos navegadores reales contra el servidor local: login, sala, empezar, roles, mover posición, QR en texto, captura y fin.
+
 ## Qué se probó y qué no
 - **Probado** contra un Postgres local: todo el servidor (salas, configuración, WebSocket, expulsar, salir, empezar, fases, fin por tiempo, "volver a tu partida"). Las pantallas se vieron en navegador con el 3D renderizado por software.
 - **Fase 3 probada en servidor:** alerta automática y manual, puntos anónimos por WebSocket (sin ids; cada uno sin el suyo), capturas con QR (rol, estado, distancia máxima 50 m, repetidas, fin de partida) y los dos modos de captura (eliminado / pasa a cazador). El mapa se vio en una vista previa web con `maplibre-gl`; el MapLibre nativo y el escáner de cámara NO se han ejecutado en un móvil.

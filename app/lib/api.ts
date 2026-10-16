@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
+import { storage } from "./storage";
 
 export const API_URL: string =
   process.env.EXPO_PUBLIC_API_URL ?? (Constants.expoConfig?.extra?.apiUrl as string);
@@ -12,9 +12,9 @@ export type RoomPlayer = Player & {
 
 const TOKEN_KEY = "manhunt_token";
 
-export const getToken = () => SecureStore.getItemAsync(TOKEN_KEY);
-export const setToken = (t: string) => SecureStore.setItemAsync(TOKEN_KEY, t);
-export const clearToken = () => SecureStore.deleteItemAsync(TOKEN_KEY);
+export const getToken = () => storage.get(TOKEN_KEY);
+export const setToken = (t: string) => storage.set(TOKEN_KEY, t);
+export const clearToken = () => storage.remove(TOKEN_KEY);
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getToken();

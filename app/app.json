@@ -48,6 +48,10 @@
     ],
     "extra": {
       "apiUrl": "https://man.diferentt.cloud"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }
