@@ -8,6 +8,7 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 - **Backend:** Node + TypeScript con Fastify y WebSocket (`ws`). Neon solo es base de datos, así que el servidor propio hace el tiempo real, el login y las validaciones. Se despliega en un host con procesos persistentes (Fly.io o Render, a decidir), porque Vercel no mantiene WebSockets.
 - **Login:** apodo, sin registro. El servidor crea un usuario por instalación y emite un JWT. Más adelante se puede vincular un email o Google a esa misma cuenta sin perder datos.
 - **Mapa:** MapLibre.
+- **Estilo:** Three.js (`@react-three/fiber`) para el radar 3D de fondo y GSAP para las animaciones de interfaz. El 3D se pausa en segundo plano y durante la fase de juego para ahorrar batería.
 - **Ubicación:** `expo-location` en primer plano y en segundo plano.
 - **QR:** `expo-camera` para escanear y `react-native-qrcode-svg` para mostrar el propio.
 

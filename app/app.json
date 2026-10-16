@@ -36,7 +36,8 @@
           "isAndroidForegroundServiceEnabled": true,
           "isIosBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "apiUrl": "https://api.tudominio.com"

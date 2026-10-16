@@ -1,7 +1,11 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
+import { Screen } from "../components/Screen";
+import { Reveal } from "../lib/anim";
 import { useSession } from "../lib/session";
+import { colors, textGlow } from "../lib/theme";
+import { Button } from "../lib/ui";
 
 export default function Nickname() {
   const { login } = useSession();
@@ -24,37 +28,43 @@ export default function Nickname() {
   };
 
   return (
-    <View style={s.container}>
-      <Text style={s.title}>Manhunt</Text>
-      <Text style={s.label}>¿Cómo te llamas?</Text>
-      <TextInput
-        style={s.input}
-        value={nickname}
-        onChangeText={setNickname}
-        placeholder="Tu apodo"
-        placeholderTextColor="#777"
-        maxLength={20}
-        autoFocus
-      />
+    <Screen center>
+      <Reveal delay={0.2} y={-30}>
+        <Text style={[s.title, textGlow(colors.hunter, 24)]}>MANHUNT</Text>
+        <Text style={s.tag}>CAZA EN LA VIDA REAL</Text>
+      </Reveal>
+      <View style={{ height: 36 }} />
+      <Reveal delay={0.6}>
+        <Text style={s.label}>¿CÓMO TE LLAMAN?</Text>
+        <TextInput
+          style={s.input}
+          value={nickname}
+          onChangeText={setNickname}
+          placeholder="Tu apodo"
+          placeholderTextColor="#555b6e"
+          maxLength={20}
+        />
+      </Reveal>
       {error ? <Text style={s.error}>{error}</Text> : null}
-      <Pressable
-        style={[s.button, (busy || nickname.trim().length < 2) && s.disabled]}
-        disabled={busy || nickname.trim().length < 2}
-        onPress={submit}
-      >
-        <Text style={s.buttonText}>{busy ? "Entrando..." : "Entrar"}</Text>
-      </Pressable>
-    </View>
+      <Reveal delay={0.8}>
+        <Button title={busy ? "Entrando..." : "Entrar"} disabled={busy || nickname.trim().length < 2} onPress={submit} />
+      </Reveal>
+    </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24, gap: 12 },
-  title: { color: "#fff", fontSize: 40, fontWeight: "800", marginBottom: 24 },
-  label: { color: "#aaa", fontSize: 16 },
-  input: { backgroundColor: "#222", color: "#fff", padding: 14, borderRadius: 10, fontSize: 18 },
-  error: { color: "#ff6b6b" },
-  button: { backgroundColor: "#e63946", padding: 16, borderRadius: 10, alignItems: "center" },
-  disabled: { opacity: 0.4 },
-  buttonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  title: { color: colors.text, fontSize: 52, fontWeight: "900", letterSpacing: 8, textAlign: "center" },
+  tag: { color: colors.hunter, fontSize: 12, fontWeight: "800", letterSpacing: 6, textAlign: "center", marginTop: 4 },
+  label: { color: colors.muted, fontSize: 12, fontWeight: "800", letterSpacing: 3, marginBottom: 8 },
+  input: {
+    backgroundColor: colors.panel,
+    color: colors.text,
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  error: { color: colors.danger },
 });

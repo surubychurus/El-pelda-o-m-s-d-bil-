@@ -1,11 +1,14 @@
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, ScrollView, Share, StyleSheet, Text, View, Pressable } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Location from "expo-location";
+import { useEffect, useState } from "react";
+import { Alert, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Screen } from "../../components/Screen";
+import { Reveal } from "../../lib/anim";
 import { kickPlayer, leaveRoom, startGame, updateConfig, type RoomConfig } from "../../lib/api";
-import { ensureForegroundPermission } from "../../lib/tracking";
 import { useSession } from "../../lib/session";
-import { Button, Choice, Stepper } from "../../lib/ui";
+import { ensureForegroundPermission } from "../../lib/tracking";
+import { colors, glow } from "../../lib/theme";
+import { Button, Card, Choice, Heading, Stepper } from "../../lib/ui";
 import { useRoom } from "../../lib/useRoom";
 
 export default function Lobby() {
@@ -72,118 +75,132 @@ export default function Lobby() {
 
   if (!room || !config) {
     return (
-      <View style={s.center}>
+      <Screen center>
         <Text style={s.muted}>{error || "Conectando..."}</Text>
         {error ? <Button title="Volver" secondary onPress={() => router.replace("/home")} /> : null}
-      </View>
+      </Screen>
     );
   }
 
   const ro = !isOwner;
+  const manual = config.mode === "classic" && config.hunterPick === "manual";
 
   return (
-    <ScrollView contentContainerStyle={s.container}>
-      <Stack.Screen options={{ title: `Sala ${room.code}`, headerBackVisible: false }} />
-
+    <Screen scroll>
       <Pressable onPress={() => Share.share({ message: `Únete a mi partida de Manhunt con el código ${room.code}` })}>
-        <Text style={s.code}>{room.code}</Text>
-        <Text style={[s.muted, { textAlign: "center" }]}>Toca para compartir el código</Text>
+        <Text style={s.small}>CÓDIGO DE SALA</Text>
+        <View style={s.codeRow}>
+          {room.code.split("").map((ch, i) => (
+            <Reveal key={i} delay={0.1 + i * 0.12} y={-40} style={[s.tile, glow(colors.hunter, 14)]}>
+              <Text style={s.tileText}>{ch}</Text>
+            </Reveal>
+          ))}
+        </View>
+        <Text style={[s.muted, { textAlign: "center" }]}>Toca para compartir</Text>
       </Pressable>
 
-      <Text style={s.h2}>Jugadores ({room.players.length})</Text>
-      <View style={s.card}>
-        {room.players.map((p) => {
-          const isHunter = config.mode === "classic" && config.hunterPick === "manual" && config.hunterId === p.id;
+      <Heading>{`Jugadores · ${room.players.length}`}</Heading>
+      <Card>
+        {room.players.map((p, i) => {
+          const isHunter = manual && config.hunterId === p.id;
           return (
-            <View key={p.id} style={s.playerRow}>
-              <Pressable
-                style={{ flex: 1 }}
-                disabled={ro || config.mode !== "classic" || config.hunterPick !== "manual"}
-                onPress={() => change({ hunterId: isHunter ? null : p.id })}
-              >
-                <Text style={s.player}>
-                  {p.id === room.ownerId ? "👑 " : ""}
-                  {isHunter ? "🎯 " : ""}
-                  {p.nickname}
-                  {p.id === player?.id ? " (tú)" : ""}
-                </Text>
-              </Pressable>
-              {isOwner && p.id !== player?.id ? (
-                <Pressable onPress={() => kickPlayer(code, p.id)}>
-                  <Text style={s.kick}>Expulsar</Text>
+            <Reveal key={p.id} delay={0.3 + i * 0.07} y={16}>
+              <View style={s.playerRow}>
+                <Pressable style={{ flex: 1 }} disabled={ro || !manual} onPress={() => change({ hunterId: isHunter ? null : p.id })}>
+                  <Text style={[s.player, isHunter && { color: colors.hunter }]}>
+                    {p.id === room.ownerId ? "👑 " : ""}
+                    {isHunter ? "🎯 " : ""}
+                    {p.nickname}
+                    {p.id === player?.id ? "  (tú)" : ""}
+                  </Text>
                 </Pressable>
-              ) : null}
-            </View>
+                {isOwner && p.id !== player?.id ? (
+                  <Pressable onPress={() => kickPlayer(code, p.id)}>
+                    <Text style={s.kick}>EXPULSAR</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </Reveal>
           );
         })}
-      </View>
+      </Card>
 
-      <Text style={s.h2}>Configuración {ro ? "(la define el creador)" : ""}</Text>
-      <View style={s.card}>
-        <Choice
-          label="Modo"
-          value={config.mode}
-          disabled={ro}
-          options={[
-            { value: "classic", label: "Clásico" },
-            { value: "teams", label: "Equipos" },
-          ]}
-          onChange={(mode) => change({ mode })}
-        />
-        {config.mode === "classic" ? (
-          <>
-            <Choice
-              label="Cazador"
-              value={config.hunterPick}
-              disabled={ro}
-              options={[
-                { value: "random", label: "Al azar" },
-                { value: "manual", label: "Elijo yo" },
-              ]}
-              onChange={(hunterPick) => change({ hunterPick, hunterId: null })}
-            />
-            {config.hunterPick === "manual" ? (
-              <Text style={s.muted}>
-                {isOwner ? "Toca a un jugador de la lista para elegirlo." : "El creador elige al cazador."}
-              </Text>
-            ) : null}
-          </>
-        ) : (
-          <Stepper label="Nº de cazadores" value={config.hunterCount} min={1} max={10} disabled={ro} onChange={(hunterCount) => change({ hunterCount })} />
-        )}
-        <Stepper label="Duración" value={config.durationMin} unit="min" step={5} min={5} max={480} disabled={ro} onChange={(durationMin) => change({ durationMin })} />
-        <Stepper label="Espera" value={config.waitMin} unit="min" min={0} max={60} disabled={ro} onChange={(waitMin) => change({ waitMin })} />
-        <Stepper label="Radio de juego" value={config.radiusM} unit="m" step={50} min={50} max={5000} disabled={ro} onChange={(radiusM) => change({ radiusM })} />
-        <Stepper label="Alerta cada" value={config.alertEveryMin} unit="min" min={1} max={120} disabled={ro} onChange={(alertEveryMin) => change({ alertEveryMin })} />
-        <Stepper label="Alerta dura" value={config.alertDurationSec} unit="s" step={10} min={10} max={300} disabled={ro} onChange={(alertDurationSec) => change({ alertDurationSec })} />
-        <Choice
-          label="Al ser capturado"
-          value={config.onCapture}
-          disabled={ro}
-          options={[
-            { value: "eliminated", label: "Eliminado" },
-            { value: "hunter", label: "Cazador" },
-          ]}
-          onChange={(onCapture) => change({ onCapture })}
-        />
-      </View>
+      <Heading>{ro ? "Configuración · la define el creador" : "Configuración"}</Heading>
+      <Reveal delay={0.5}>
+        <Card>
+          <Choice
+            label="Modo"
+            value={config.mode}
+            disabled={ro}
+            options={[
+              { value: "classic", label: "Clásico" },
+              { value: "teams", label: "Equipos" },
+            ]}
+            onChange={(mode) => change({ mode })}
+          />
+          {config.mode === "classic" ? (
+            <>
+              <Choice
+                label="Cazador"
+                value={config.hunterPick}
+                disabled={ro}
+                options={[
+                  { value: "random", label: "Al azar" },
+                  { value: "manual", label: "Elijo yo" },
+                ]}
+                onChange={(hunterPick) => change({ hunterPick, hunterId: null })}
+              />
+              {config.hunterPick === "manual" ? (
+                <Text style={s.muted}>
+                  {isOwner ? "Toca a un jugador de la lista para elegirlo." : "El creador elige al cazador."}
+                </Text>
+              ) : null}
+            </>
+          ) : (
+            <Stepper label="Nº de cazadores" value={config.hunterCount} min={1} max={10} disabled={ro} onChange={(hunterCount) => change({ hunterCount })} />
+          )}
+          <Stepper label="Duración" value={config.durationMin} unit="min" step={5} min={5} max={480} disabled={ro} onChange={(durationMin) => change({ durationMin })} />
+          <Stepper label="Espera" value={config.waitMin} unit="min" min={0} max={60} disabled={ro} onChange={(waitMin) => change({ waitMin })} />
+          <Stepper label="Radio de juego" value={config.radiusM} unit="m" step={50} min={50} max={5000} disabled={ro} onChange={(radiusM) => change({ radiusM })} />
+          <Stepper label="Alerta cada" value={config.alertEveryMin} unit="min" min={1} max={120} disabled={ro} onChange={(alertEveryMin) => change({ alertEveryMin })} />
+          <Stepper label="Alerta dura" value={config.alertDurationSec} unit="s" step={10} min={10} max={300} disabled={ro} onChange={(alertDurationSec) => change({ alertDurationSec })} />
+          <Choice
+            label="Al ser capturado"
+            value={config.onCapture}
+            disabled={ro}
+            options={[
+              { value: "eliminated", label: "Eliminado" },
+              { value: "hunter", label: "Cazador" },
+            ]}
+            onChange={(onCapture) => change({ onCapture })}
+          />
+        </Card>
+      </Reveal>
       {saveError ? <Text style={s.error}>{saveError}</Text> : null}
 
-      {isOwner ? <Button title="Empezar partida aquí" onPress={start} /> : <Text style={s.muted}>Esperando a que el creador empiece...</Text>}
+      {isOwner ? <Button title="Empezar partida aquí" onPress={start} /> : <Text style={[s.muted, { textAlign: "center" }]}>Esperando a que el creador empiece...</Text>}
       <Button title="Salir de la sala" secondary onPress={leave} />
-    </ScrollView>
+    </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  container: { padding: 20, gap: 14 },
-  center: { flex: 1, justifyContent: "center", padding: 24, gap: 16 },
-  code: { color: "#fff", fontSize: 64, fontWeight: "900", letterSpacing: 10, textAlign: "center" },
-  h2: { color: "#fff", fontSize: 18, fontWeight: "700", marginTop: 8 },
-  card: { backgroundColor: "#1c1c1c", borderRadius: 12, padding: 14, gap: 4 },
-  playerRow: { flexDirection: "row", alignItems: "center", minHeight: 40 },
-  player: { color: "#fff", fontSize: 17 },
-  kick: { color: "#ff6b6b", fontSize: 13 },
-  muted: { color: "#888", fontSize: 14 },
-  error: { color: "#ff6b6b" },
+  small: { color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 4, textAlign: "center", marginBottom: 10 },
+  codeRow: { flexDirection: "row", justifyContent: "center", gap: 10, marginBottom: 8 },
+  tile: {
+    width: 66,
+    height: 84,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,46,77,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(255,46,77,0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tileText: { color: colors.text, fontSize: 46, fontWeight: "900" },
+  playerRow: { flexDirection: "row", alignItems: "center", minHeight: 42 },
+  player: { color: colors.text, fontSize: 17, fontWeight: "600" },
+  kick: { color: colors.danger, fontSize: 11, fontWeight: "800", letterSpacing: 2 },
+  muted: { color: colors.muted, fontSize: 13 },
+  error: { color: colors.danger },
 });

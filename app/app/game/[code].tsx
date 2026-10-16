@@ -1,11 +1,15 @@
 import * as Location from "expo-location";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import { RoleReveal } from "../../components/RoleReveal";
+import { Screen } from "../../components/Screen";
+import { Pop, Reveal } from "../../lib/anim";
 import { leaveRoom } from "../../lib/api";
 import { useSession } from "../../lib/session";
+import { colors, textGlow } from "../../lib/theme";
 import { distanceMeters, startTracking, stopTracking } from "../../lib/tracking";
-import { Button } from "../../lib/ui";
+import { Button, Card, Heading } from "../../lib/ui";
 import { useRoom } from "../../lib/useRoom";
 
 const fmt = (ms: number) => {
@@ -22,6 +26,7 @@ export default function Game() {
   const [now, setNow] = useState(Date.now());
   const [dist, setDist] = useState<number | null>(null);
   const [bgOk, setBgOk] = useState(true);
+  const [revealed, setRevealed] = useState(false);
 
   const active = room?.status === "waiting" || room?.status === "playing";
 
@@ -56,9 +61,9 @@ export default function Game() {
 
   if (!room || !room.startedAt) {
     return (
-      <View style={s.center}>
+      <Screen center>
         <Text style={s.muted}>Conectando...</Text>
-      </View>
+      </Screen>
     );
   }
 
@@ -68,8 +73,12 @@ export default function Game() {
   const waitEnd = start + room.config.waitMin * 60_000;
   const gameEnd = waitEnd + room.config.durationMin * 60_000;
   const isHunter = me?.role === "hunter";
+  const accent = isHunter ? colors.hunter : colors.hider;
   const outside = dist != null && dist > room.config.radiusM;
   const hunters = room.players.filter((p) => p.role === "hunter");
+  const phaseMs = room.status === "waiting" ? waitEnd - serverNow : gameEnd - serverNow;
+  const phaseTotal = room.status === "waiting" ? room.config.waitMin * 60_000 : room.config.durationMin * 60_000;
+  const progress = Math.min(1, Math.max(0, 1 - phaseMs / phaseTotal));
 
   const leave = () =>
     Alert.alert("¿Salir de la partida?", "Pasarás a ser espectador y no podrás volver a jugar.", [
@@ -86,83 +95,96 @@ export default function Game() {
     ]);
 
   return (
-    <ScrollView contentContainerStyle={s.container}>
-      <Stack.Screen options={{ title: `Partida ${room.code}`, headerBackVisible: false }} />
-
-      <Text style={[s.role, isHunter ? s.hunter : s.hider]}>
-        {me?.role === "spectator" ? "👀 Espectador" : isHunter ? "🎯 Eres cazador" : "🙈 Eres escondido"}
-      </Text>
-
-      {room.status === "waiting" && (
-        <>
-          <Text style={s.big}>{fmt(waitEnd - serverNow)}</Text>
-          <Text style={s.text}>
-            {isHunter
-              ? "Los escondidos se están escondiendo. Quédate en el punto de inicio hasta que acabe la cuenta atrás."
-              : "¡Escóndete! Los cazadores salen cuando acabe la cuenta atrás."}
+    <View style={{ flex: 1 }}>
+      {/* El 3D se congela durante la partida para ahorrar batería */}
+      <Screen scroll accent={accent} paused={room.status === "playing"}>
+        <Reveal delay={0.1}>
+          <Text style={[s.role, textGlow(accent, 16), { color: accent }]}>
+            {me?.role === "spectator" ? "ESPECTADOR" : isHunter ? "CAZADOR" : "ESCONDIDO"}
           </Text>
-        </>
-      )}
+        </Reveal>
 
-      {room.status === "playing" && (
-        <>
-          <Text style={s.big}>{fmt(gameEnd - serverNow)}</Text>
-          <Text style={s.text}>Tiempo restante de partida.</Text>
-        </>
-      )}
+        {active && (
+          <>
+            <Text style={s.phase}>{room.status === "waiting" ? "ESPERA · SALEN LOS CAZADORES EN" : "TIEMPO DE PARTIDA"}</Text>
+            <Pop trigger={Math.ceil(phaseMs / 1000)}>
+              <Text style={[s.big, textGlow(accent, 22)]}>{fmt(phaseMs)}</Text>
+            </Pop>
+            <View style={s.bar}>
+              <View style={[s.barFill, { width: `${progress * 100}%`, backgroundColor: accent }]} />
+            </View>
+            <Text style={s.text}>
+              {room.status === "waiting"
+                ? isHunter
+                  ? "Los escondidos se están escondiendo. Quédate en el punto de inicio."
+                  : "¡Escóndete! Los cazadores salen cuando acabe la cuenta atrás."
+                : isHunter
+                  ? "Encuentra a los escondidos y escanea su QR."
+                  : "Que no te encuentren."}
+            </Text>
+          </>
+        )}
 
-      {room.status === "finished" && (
-        <>
-          <Text style={s.big}>{room.winner === "hunters" ? "Ganan los cazadores" : "Ganan los escondidos"}</Text>
-          <Text style={s.text}>Fin de la partida.</Text>
-          <Button
-            title="Volver al inicio"
-            onPress={async () => {
-              await leaveRoom(code).catch(() => {});
-              router.replace("/home");
-            }}
-          />
-        </>
-      )}
+        {room.status === "finished" && (
+          <Reveal delay={0.2}>
+            <Text style={[s.big, textGlow(room.winner === "hunters" ? colors.hunter : colors.hider, 26), { fontSize: 38 }]}>
+              {room.winner === "hunters" ? "GANAN LOS CAZADORES" : "GANAN LOS ESCONDIDOS"}
+            </Text>
+            <View style={{ height: 16 }} />
+            <Button
+              title="Volver al inicio"
+              onPress={async () => {
+                await leaveRoom(code).catch(() => {});
+                router.replace("/home");
+              }}
+            />
+          </Reveal>
+        )}
 
-      {active && outside && (
-        <View style={s.warn}>
-          <Text style={s.warnText}>
-            ⚠️ Te has salido de la zona de juego ({Math.round(dist!)} m del centro, radio {room.config.radiusM} m). Vuelve.
+        {active && outside && (
+          <View style={s.warn}>
+            <Text style={s.warnText}>
+              ⚠️ Fuera de la zona de juego ({Math.round(dist!)} m del centro, radio {room.config.radiusM} m). Vuelve.
+            </Text>
+          </View>
+        )}
+        {active && dist != null && !outside && (
+          <Text style={s.muted}>
+            A {Math.round(dist)} m del centro · radio {room.config.radiusM} m
           </Text>
-        </View>
-      )}
-      {active && dist != null && !outside && (
-        <Text style={s.muted}>
-          A {Math.round(dist)} m del centro · radio {room.config.radiusM} m
-        </Text>
-      )}
-      {active && !bgOk && (
-        <View style={s.warn}>
-          <Text style={s.warnText}>
-            Sin permiso de ubicación "siempre", tu posición solo se comparte con la app abierta. Actívalo en los ajustes del móvil.
-          </Text>
-        </View>
-      )}
+        )}
+        {active && !bgOk && (
+          <View style={s.warn}>
+            <Text style={s.warnText}>
+              Sin permiso de ubicación "siempre", tu posición solo se comparte con la app abierta. Actívalo en los ajustes del móvil.
+            </Text>
+          </View>
+        )}
 
-      <Text style={s.h2}>Cazadores</Text>
-      <Text style={s.text}>{hunters.map((h) => h.nickname).join(", ") || "—"}</Text>
+        <Heading>Cazadores</Heading>
+        <Card>
+          <Text style={s.hunters}>{hunters.map((h) => h.nickname).join("  ·  ") || "—"}</Text>
+        </Card>
 
-      {active && <Button title="Salir de la partida" secondary onPress={leave} />}
-    </ScrollView>
+        {active && <Button title="Salir de la partida" secondary onPress={leave} />}
+      </Screen>
+
+      {!revealed && room.status === "waiting" && me?.role && me.role !== "spectator" && (
+        <RoleReveal role={me.role} onDone={() => setRevealed(true)} />
+      )}
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { padding: 24, gap: 16, alignItems: "stretch" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  role: { fontSize: 26, fontWeight: "800", textAlign: "center" },
-  hunter: { color: "#e63946" },
-  hider: { color: "#4cc9f0" },
-  big: { color: "#fff", fontSize: 56, fontWeight: "900", textAlign: "center", marginVertical: 8 },
-  text: { color: "#ccc", fontSize: 16, textAlign: "center" },
-  h2: { color: "#fff", fontSize: 18, fontWeight: "700", textAlign: "center", marginTop: 8 },
-  muted: { color: "#888", fontSize: 14, textAlign: "center" },
-  warn: { backgroundColor: "#4a1d1d", padding: 14, borderRadius: 10 },
-  warnText: { color: "#ffb4b4", fontSize: 15 },
+  role: { fontSize: 22, fontWeight: "900", letterSpacing: 8, textAlign: "center" },
+  phase: { color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 3, textAlign: "center", marginTop: 10 },
+  big: { color: colors.text, fontSize: 76, fontWeight: "900", textAlign: "center", letterSpacing: 2 },
+  bar: { height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.1)", overflow: "hidden", marginBottom: 6 },
+  barFill: { height: 4 },
+  text: { color: colors.text, fontSize: 15, textAlign: "center", opacity: 0.85 },
+  muted: { color: colors.muted, fontSize: 13, textAlign: "center" },
+  warn: { backgroundColor: "rgba(255,46,77,0.16)", borderWidth: 1, borderColor: "rgba(255,46,77,0.5)", padding: 14, borderRadius: 12 },
+  warnText: { color: "#ffb4b4", fontSize: 14 },
+  hunters: { color: colors.hunter, fontSize: 17, fontWeight: "800", textAlign: "center" },
 });
