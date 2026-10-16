@@ -16,9 +16,30 @@
     },
     "android": {
       "package": "com.manhunt.app",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION", "CAMERA"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "CAMERA"
+      ]
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-camera", "expo-location"],
-    "extra": { "apiUrl": "https://api.tudominio.com" }
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-camera",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Manhunt comparte tu ubicación durante la partida aunque la app esté en segundo plano.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "https://api.tudominio.com"
+    }
   }
 }

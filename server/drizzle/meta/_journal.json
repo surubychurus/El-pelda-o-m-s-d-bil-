@@ -15,6 +15,13 @@
       "when": 1792117215462,
       "tag": "0001_volatile_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792117404624,
+      "tag": "0002_freezing_vengeance",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,11 @@
 import { randomBytes, randomInt } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, or, isNull } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { defaultConfig, roomConfigSchema, type RoomConfig } from "./config.js";
 import { db } from "./db/index.js";
 import { players, roomPlayers, rooms } from "./db/schema.js";
+import { settleIfOver } from "./game.js";
 import { broadcast } from "./hub.js";
 
 const MAX_PLAYERS = 30;
@@ -32,7 +33,12 @@ export async function snapshot(roomId: string) {
   const [room] = await db.select().from(rooms).where(eq(rooms.id, roomId));
   if (!room) return null;
   const members = await db
-    .select({ id: players.id, nickname: players.nickname })
+    .select({
+      id: players.id,
+      nickname: players.nickname,
+      role: roomPlayers.role,
+      state: roomPlayers.state,
+    })
     .from(roomPlayers)
     .innerJoin(players, eq(players.id, roomPlayers.playerId))
     .where(eq(roomPlayers.roomId, roomId))
@@ -43,14 +49,19 @@ export async function snapshot(roomId: string) {
     ownerId: room.ownerId,
     config: room.config as RoomConfig,
     players: members,
+    startedAt: room.startedAt?.toISOString() ?? null,
+    originLat: room.originLat,
+    originLng: room.originLng,
+    winner: room.winner,
+    serverNow: Date.now(),
   };
 }
 
-async function pushSnapshot(roomId: string) {
+export async function pushSnapshot(roomId: string) {
   broadcast(roomId, { type: "room", room: await snapshot(roomId) });
 }
 
-async function requireMember(roomId: string, playerId: string) {
+export async function requireMember(roomId: string, playerId: string) {
   const [m] = await db
     .select()
     .from(roomPlayers)
@@ -133,6 +144,24 @@ export function registerRoomRoutes(app: FastifyInstance) {
     return snapshot(room.id);
   });
 
+  // Sala en la que está el jugador (para volver a ella tras cerrar la app)
+  app.get("/me/room", auth, async (req) => {
+    const [row] = await db
+      .select({ code: rooms.code, status: rooms.status })
+      .from(roomPlayers)
+      .innerJoin(rooms, eq(rooms.id, roomPlayers.roomId))
+      .where(
+        and(
+          eq(roomPlayers.playerId, me(req)),
+          inArray(rooms.status, ["lobby", "waiting", "playing"]),
+          or(isNull(roomPlayers.role), ne(roomPlayers.role, "spectator")),
+        ),
+      )
+      .orderBy(desc(rooms.createdAt))
+      .limit(1);
+    return row ?? null;
+  });
+
   app.get("/rooms/:code", auth, async (req) => {
     const { code } = codeParam.parse(req.params);
     const room = await getRoomByCode(code);
@@ -162,7 +191,17 @@ export function registerRoomRoutes(app: FastifyInstance) {
     const room = await getRoomByCode(code);
     if (!room) return { ok: true };
     await requireMember(room.id, me(req));
-    await removePlayer(room.id, me(req));
+    if (room.status === "lobby") {
+      await removePlayer(room.id, me(req));
+    } else {
+      // En partida no se borra al jugador: pasa a espectador y deja de contar
+      await db
+        .update(roomPlayers)
+        .set({ role: "spectator", state: "captured" })
+        .where(and(eq(roomPlayers.roomId, room.id), eq(roomPlayers.playerId, me(req))));
+      await settleIfOver(room.id);
+      await pushSnapshot(room.id);
+    }
     return { ok: true };
   });
 

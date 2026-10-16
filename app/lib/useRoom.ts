@@ -8,6 +8,8 @@ export function useRoom(code: string) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState("");
   const [kicked, setKicked] = useState(false);
+  // Diferencia entre el reloj del servidor y el del móvil, para que la cuenta atrás sea igual para todos
+  const [clockOffset, setClockOffset] = useState(0);
   const closed = useRef(false);
 
   useEffect(() => {
@@ -24,6 +26,7 @@ export function useRoom(code: string) {
         const msg = JSON.parse(e.data as string);
         if (msg.type === "room") {
           setRoom(msg.room);
+          setClockOffset(msg.room.serverNow - Date.now());
           setError("");
         } else if (msg.type === "kicked" && msg.playerId === player?.id) {
           closed.current = true;
@@ -45,5 +48,5 @@ export function useRoom(code: string) {
     };
   }, [code, player?.id]);
 
-  return { room, error, kicked };
+  return { room, error, kicked, clockOffset };
 }

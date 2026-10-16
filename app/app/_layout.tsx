@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import "../lib/tracking"; // registra la tarea de ubicación en segundo plano
 import { SessionProvider } from "../lib/session";
 
 export default function RootLayout() {

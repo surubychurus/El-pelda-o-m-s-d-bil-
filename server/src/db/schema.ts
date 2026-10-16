@@ -31,6 +31,8 @@ export const rooms = pgTable("rooms", {
   originLat: doublePrecision("origin_lat"),
   originLng: doublePrecision("origin_lng"),
   startedAt: timestamp("started_at"),
+  winner: text("winner"), // "hunters" | "hiders"
+  finishedAt: timestamp("finished_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

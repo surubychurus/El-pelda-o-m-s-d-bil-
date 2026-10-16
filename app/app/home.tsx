@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { createRoom } from "../lib/api";
+import { createRoom, getMyRoom } from "../lib/api";
 import { useSession } from "../lib/session";
 import { Button } from "../lib/ui";
 
@@ -11,6 +11,11 @@ export default function Home() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(player?.nickname ?? "");
   const [error, setError] = useState("");
+  const [current, setCurrent] = useState<{ code: string; status: string } | null>(null);
+
+  useEffect(() => {
+    getMyRoom().then(setCurrent).catch(() => {});
+  }, []);
 
   const save = async () => {
     try {
@@ -40,6 +45,12 @@ export default function Home() {
       {error ? <Text style={s.error}>{error}</Text> : null}
 
       <View style={{ gap: 12, marginVertical: 24 }}>
+        {current ? (
+          <Button
+            title={`Volver a tu partida (${current.code})`}
+            onPress={() => router.push(current.status === "lobby" ? `/room/${current.code}` : `/game/${current.code}`)}
+          />
+        ) : null}
         <Button
           title="Crear sala"
           onPress={async () => {

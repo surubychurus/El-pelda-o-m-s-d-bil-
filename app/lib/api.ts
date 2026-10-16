@@ -5,6 +5,10 @@ export const API_URL: string =
   process.env.EXPO_PUBLIC_API_URL ?? (Constants.expoConfig?.extra?.apiUrl as string);
 
 export type Player = { id: string; nickname: string };
+export type RoomPlayer = Player & {
+  role: "hunter" | "hider" | "spectator" | null;
+  state: "alive" | "captured";
+};
 
 const TOKEN_KEY = "manhunt_token";
 
@@ -58,7 +62,12 @@ export type Room = {
   status: "lobby" | "waiting" | "playing" | "finished";
   ownerId: string;
   config: RoomConfig;
-  players: Player[];
+  players: RoomPlayer[];
+  startedAt: string | null;
+  originLat: number | null;
+  originLng: number | null;
+  winner: "hunters" | "hiders" | null;
+  serverNow: number;
 };
 
 export const createRoom = () => request<Room>("/rooms", { method: "POST" });
@@ -73,3 +82,11 @@ export const leaveRoom = (code: string) => request<{ ok: true }>(`/rooms/${code}
 
 export const kickPlayer = (code: string, playerId: string) =>
   request<{ ok: true }>(`/rooms/${code}/kick`, { method: "POST", body: JSON.stringify({ playerId }) });
+
+export const startGame = (code: string, lat: number, lng: number) =>
+  request<{ ok: true }>(`/rooms/${code}/start`, { method: "POST", body: JSON.stringify({ lat, lng }) });
+
+export const sendLocation = (code: string, lat: number, lng: number) =>
+  request<{ ok: boolean }>(`/rooms/${code}/location`, { method: "POST", body: JSON.stringify({ lat, lng }) });
+
+export const getMyRoom = () => request<{ code: string; status: Room["status"] } | null>("/me/room");

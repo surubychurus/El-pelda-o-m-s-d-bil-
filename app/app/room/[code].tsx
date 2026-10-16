@@ -1,7 +1,9 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, ScrollView, Share, StyleSheet, Text, View, Pressable } from "react-native";
-import { kickPlayer, leaveRoom, updateConfig, type RoomConfig } from "../../lib/api";
+import * as Location from "expo-location";
+import { kickPlayer, leaveRoom, startGame, updateConfig, type RoomConfig } from "../../lib/api";
+import { ensureForegroundPermission } from "../../lib/tracking";
 import { useSession } from "../../lib/session";
 import { Button, Choice, Stepper } from "../../lib/ui";
 import { useRoom } from "../../lib/useRoom";
@@ -20,6 +22,25 @@ export default function Lobby() {
   useEffect(() => {
     if (room) setConfig(room.config);
   }, [room]);
+
+  // Cuando el creador empieza, todos pasan a la pantalla de partida
+  useEffect(() => {
+    if (room && room.status !== "lobby") router.replace(`/game/${code}`);
+  }, [room, code, router]);
+
+  const start = async () => {
+    try {
+      if (!(await ensureForegroundPermission())) {
+        setSaveError("Necesito permiso de ubicación para fijar el punto de inicio");
+        return;
+      }
+      // El punto de inicio es donde está el creador al empezar
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      await startGame(code, pos.coords.latitude, pos.coords.longitude);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "No se pudo empezar");
+    }
+  };
 
   useEffect(() => {
     if (kicked) {
@@ -148,7 +169,7 @@ export default function Lobby() {
       </View>
       {saveError ? <Text style={s.error}>{saveError}</Text> : null}
 
-      {isOwner ? <Button title="Empezar partida (fase 2)" disabled onPress={() => {}} /> : <Text style={s.muted}>Esperando a que el creador empiece...</Text>}
+      {isOwner ? <Button title="Empezar partida aquí" onPress={start} /> : <Text style={s.muted}>Esperando a que el creador empiece...</Text>}
       <Button title="Salir de la sala" secondary onPress={leave} />
     </ScrollView>
   );
