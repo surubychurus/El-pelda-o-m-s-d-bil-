@@ -39,8 +39,14 @@ App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos,
 - **No probado:** la app en un móvil real (ubicación en segundo plano, permisos, rendimiento del 3D), ni nada contra el Neon real del usuario, ni el despliegue en el VPS.
 - El bundle de Android compila (`npx expo export --platform android`).
 
+## Base de datos (Neon)
+- Proyecto `holy-scene-89752778` (región `aws-sa-east-1`, Postgres 18), rama `production` (`br-patient-night-b6sd0m9h`).
+- **Esquema aplicado** (migraciones 0000-0002) y registrado en `drizzle.__drizzle_migrations`, así que `npm run db:migrate` no repite nada. Tablas en `public`: alerts, captures, locations, players, room_players, rooms.
+- El proyecto también tiene tablas `neon_auth` (servicio Auth activado), que esta app no usa.
+- Sin probar aún: el servidor contra este Neon (hace falta `DATABASE_URL` en `server/.env`).
+
 ## Pendiente del usuario
-1. Abrir una **sesión nueva** con el conector de Neon (OAuth) para que Claude cree las tablas y pruebe contra su Neon. Alternativa: ejecutar `npm run db:migrate` en `server/` con su `DATABASE_URL`.
+1. Poner `DATABASE_URL` (consola de Neon) en `server/.env` del VPS.
 2. Subdominio con registro `A` al VPS; seguir `server/DEPLOY.md`.
 3. Para jugar con ubicación en segundo plano hace falta un **build de desarrollo** (EAS con cuenta de Expo gratuita; iOS exige Apple Developer, 99 USD/año). Expo Go no sirve para eso.
 4. Confirmar mapa: MapLibre (recomendado) o Google Maps.
