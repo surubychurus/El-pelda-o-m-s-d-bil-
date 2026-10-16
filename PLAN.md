@@ -4,9 +4,10 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 
 ## Stack
 - **App:** Expo (React Native + TypeScript), Expo Router.
-- **Backend:** Supabase (Postgres, Realtime, Edge Functions).
-- **Login:** apodo, sin registro. Se usa Supabase Anonymous Auth, así que cada instalación tiene un `user_id` real. Más adelante se puede vincular un email o Google a esa misma cuenta sin perder datos.
-- **Mapa:** MapLibre (pendiente de decidir contra Google Maps).
+- **Base de datos:** Neon (Postgres serverless), con Drizzle ORM.
+- **Backend:** Node + TypeScript con Fastify y WebSocket (`ws`). Neon solo es base de datos, así que el servidor propio hace el tiempo real, el login y las validaciones. Se despliega en un host con procesos persistentes (Fly.io o Render, a decidir), porque Vercel no mantiene WebSockets.
+- **Login:** apodo, sin registro. El servidor crea un usuario por instalación y emite un JWT. Más adelante se puede vincular un email o Google a esa misma cuenta sin perder datos.
+- **Mapa:** MapLibre.
 - **Ubicación:** `expo-location` en primer plano y en segundo plano.
 - **QR:** `expo-camera` para escanear y `react-native-qrcode-svg` para mostrar el propio.
 
@@ -45,9 +46,9 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 ### Reglas pendientes
 - Qué pasa si un jugador sale del radio de juego: de momento solo se le avisa en la app.
 - Qué pasa si alguien pierde la conexión o cierra la app durante la partida.
-- Distancia máxima permitida para validar una captura.
+- Distancia máxima para validar una captura: 10 m (valor propuesto).
 
-## Modelo de datos (Supabase)
+## Modelo de datos (Neon)
 - `players`: `id` (= `auth.uid`), `nickname`, `created_at`.
 - `rooms`: `id`, `code`, `owner_id`, `status` (`lobby`, `waiting`, `playing`, `finished`), `config` (jsonb), `origin_lat`, `origin_lng`, `started_at`.
 - `room_players`: `room_id`, `player_id`, `role` (`hunter`, `hider`, `spectator`), `status` (`alive`, `captured`), `qr_token`.
@@ -55,13 +56,14 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 - `captures`: `room_id`, `hunter_id`, `hider_id`, `at`.
 - `alerts`: `room_id`, `started_at`, `ends_at`, `triggered_by`.
 
-**Seguridad (RLS):** nadie puede leer las ubicaciones de otros jugadores directamente. Solo se pueden consultar durante una alerta activa, mediante una función del servidor que devuelve los puntos anónimos. Las capturas se validan en una Edge Function: comprueba el token del QR, la distancia y los roles.
+**Seguridad:** la app nunca habla con la base de datos, solo con el servidor. El servidor guarda las ubicaciones pero solo las envía a los demás durante una alerta activa, como puntos anónimos. Las capturas se validan en el servidor: comprueba el token del QR, la distancia y los roles.
 
 ## Fases
 
 **Fase 0: base** (pendiente)
-- Proyecto Expo, navegación, tema, y proyecto Supabase.
-- Login con apodo mediante Anonymous Auth.
+- Proyecto Expo, navegación y tema.
+- Servidor Fastify, base de datos en Neon y migraciones con Drizzle.
+- Login con apodo y JWT.
 
 **Fase 1: salas**
 - Crear sala, unirse con código, lobby en tiempo real.
@@ -82,7 +84,7 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 - Pruebas reales con amigos en la calle.
 
 **Fase 5: tiendas** (a futuro)
-- Cuentas reales (vincular email o Google al usuario anónimo).
+- Cuentas reales (vincular email o Google al usuario por apodo).
 - Permisos de ubicación en segundo plano y políticas de privacidad para App Store y Google Play.
 
 ## Riesgos
