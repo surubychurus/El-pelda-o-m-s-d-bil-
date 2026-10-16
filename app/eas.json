@@ -5,12 +5,12 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.tudominio.com" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://man.diferentt.cloud" }
     },
     "preview": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_API_URL": "https://api.tudominio.com" }
+      "env": { "EXPO_PUBLIC_API_URL": "https://man.diferentt.cloud" }
     }
   }
 }

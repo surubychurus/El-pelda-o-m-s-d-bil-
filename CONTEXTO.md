@@ -14,7 +14,7 @@ App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos,
 
 ## Stack
 - **App:** Expo (React Native + TypeScript), Expo Router, Three.js (`@react-three/fiber`) para el radar 3D de fondo y GSAP para animaciones.
-- **Servidor:** Node + Fastify + WebSocket, JWT propio. Corre en el **VPS del usuario** (Ubuntu), con Caddy para HTTPS y systemd.
+- **Servidor:** Node + Fastify + WebSocket, JWT propio. Corre en el **VPS del usuario** (Ubuntu), con **nginx** (ya instalado en el VPS) como proxy y certbot para HTTPS, y systemd. Dominio: `man.diferentt.cloud` (IP 187.127.23.185). La URL ya está en `app/eas.json` y `app/app.json`.
 - **Base de datos:** **Neon** (Postgres) con Drizzle y el driver `pg`. Proyecto del usuario: org `org-hidden-sea-17300164`, proyecto `holy-scene-89752778`, rama `production`.
 - **Mapa:** MapLibre (`@maplibre/maplibre-react-native` v11) con los mapas gratuitos de OpenFreeMap, estilo `dark`, sin clave. Requiere build de desarrollo (no funciona en Expo Go). En web hay un radar plano de respaldo (`components/AlertMap.tsx`).
 

@@ -4,17 +4,17 @@ Necesitas: el servidor en tu VPS funcionando, una cuenta gratuita de Expo y un A
 
 ## 1. Servidor en el VPS
 Sigue [server/DEPLOY.md](server/DEPLOY.md). Resumen de lo que debe quedar listo:
-1. Subdominio con registro `A` apuntando al VPS (por ejemplo `api.tudominio.com`).
-2. `server/.env` con tu `DATABASE_URL` de Neon (consola de Neon → Connect) y un `JWT_SECRET` (`openssl rand -hex 32`).
+1. El dominio `man.diferentt.cloud` ya apunta al VPS. Ahí hay nginx: la guía configura nginx y HTTPS con certbot.
+2. `server/.env`: el script `deploy/setup-env.sh` te pide la `DATABASE_URL` de Neon (consola de Neon → Connect) sin mostrarla y genera el `JWT_SECRET`.
 3. Las tablas ya están creadas en tu Neon. `npm run db:migrate` no repite nada.
 4. Comprueba que responde desde fuera:
    ```bash
-   curl https://api.tudominio.com/health      # → {"ok":true}
+   curl https://man.diferentt.cloud/health      # → {"ok":true}
    ```
    Si no responde, mira `journalctl -u manhunt -f` en el VPS.
 
-## 2. Poner tu dirección en la app
-Edita `app/eas.json` y cambia las dos apariciones de `https://api.tudominio.com` por tu subdominio. Esa dirección se graba dentro de la app al compilarla.
+## 2. Dirección de la app
+Ya está puesta: `https://man.diferentt.cloud` en `app/eas.json` y `app/app.json`. Se graba dentro de la app al compilarla, así que **no la cambies a `http://`**: Android la bloquearía.
 
 ## 3. Compilar la app (build de desarrollo, en la nube, gratis)
 En tu PC, con Node 20+ y el repo clonado:
@@ -36,7 +36,7 @@ Cuando cambies solo código de la app (no dependencias nativas), no hace falta r
 ## 4. Arrancar el código en tu PC y abrirlo en el móvil
 ```bash
 cd app
-echo "EXPO_PUBLIC_API_URL=https://api.tudominio.com" > .env
+echo "EXPO_PUBLIC_API_URL=https://man.diferentt.cloud" > .env
 npx expo start --dev-client
 ```
 Abre la app **Manhunt** (la que instalaste) y escanea el QR de la terminal, o elige el servidor que aparece. Móvil y PC deben estar en la misma wifi.
@@ -61,7 +61,7 @@ Para ir rápido, en la sala pon **Duración 5 min**, **Espera 1 min**, **Alerta 
 | Síntoma | Qué mirar |
 |---|---|
 | "No se pudo conectar" al poner el apodo | La URL de `eas.json`/`.env` está mal, o el servidor no responde (`curl .../health`). |
-| La app abre pero sala y lobby no se actualizan | El WebSocket no llega: Caddy debe estar delante del servidor (lo hace el `Caddyfile` incluido). |
+| La app abre pero sala y lobby no se actualizan | El WebSocket no llega: nginx tiene que pasar las cabeceras `Upgrade` (las trae `deploy/nginx-manhunt.conf`). |
 | El mapa sale gris | Sin internet en el móvil: las teselas vienen de OpenFreeMap. |
 | No aparece mi punto para los demás | Permiso "todo el tiempo" y batería sin restricciones. |
 | El escáner no lee el QR | Más luz y acercarse; el QR debe verse entero. |

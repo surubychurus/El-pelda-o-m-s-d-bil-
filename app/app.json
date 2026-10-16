@@ -47,7 +47,7 @@
       "@maplibre/maplibre-react-native"
     ],
     "extra": {
-      "apiUrl": "https://api.tudominio.com"
+      "apiUrl": "https://man.diferentt.cloud"
     }
   }
 }
