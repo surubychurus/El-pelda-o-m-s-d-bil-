@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { RoomConfig } from "./config.js";
 import { db } from "./db/index.js";
 import { locations, roomPlayers, rooms } from "./db/schema.js";
+import { maybeAutoAlert, pushPoints } from "./alerts.js";
 import { HttpError, getRoomByCode, pushSnapshot, requireMember } from "./rooms.js";
 
 const coords = z.object({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) });
@@ -101,6 +102,9 @@ export async function tick(now = new Date()) {
     } else if (room.status === "waiting" && now.getTime() >= waitEnd) {
       await db.update(rooms).set({ status: "playing" }).where(eq(rooms.id, room.id));
       await pushSnapshot(room.id);
+    } else if (room.status === "playing") {
+      await maybeAutoAlert(room, waitEnd, gameEnd, now.getTime());
+      await pushPoints(room.id); // si hay alerta en curso, refresca los puntos
     }
   }
 }

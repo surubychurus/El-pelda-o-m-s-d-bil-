@@ -1,11 +1,12 @@
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, Vibration, View } from "react-native";
+import { AlertMap } from "../../components/AlertMap";
 import { RoleReveal } from "../../components/RoleReveal";
 import { Screen } from "../../components/Screen";
-import { Pop, Reveal } from "../../lib/anim";
-import { leaveRoom } from "../../lib/api";
+import { Pop, Pulse, Reveal } from "../../lib/anim";
+import { launchAlert, leaveRoom } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { colors, textGlow } from "../../lib/theme";
 import { distanceMeters, startTracking, stopTracking } from "../../lib/tracking";
@@ -22,11 +23,20 @@ export default function Game() {
   const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
   const { player } = useSession();
-  const { room, clockOffset } = useRoom(code);
+  const { room, clockOffset, points, captured } = useRoom(code);
   const [now, setNow] = useState(Date.now());
   const [dist, setDist] = useState<number | null>(null);
   const [bgOk, setBgOk] = useState(true);
   const [revealed, setRevealed] = useState(false);
+  const [capturedShown, setCapturedShown] = useState(false);
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [alertError, setAlertError] = useState("");
+  const alertId = room?.alert?.id;
+
+  // Vibra cuando empieza una alerta
+  useEffect(() => {
+    if (alertId) Vibration.vibrate([0, 400, 200, 400]);
+  }, [alertId]);
 
   const active = room?.status === "waiting" || room?.status === "playing";
 
@@ -50,9 +60,10 @@ export default function Game() {
     const { originLat, originLng } = room;
     let sub: Location.LocationSubscription | undefined;
     let cancelled = false;
-    Location.watchPositionAsync({ accuracy: Location.Accuracy.High, distanceInterval: 5 }, (pos) =>
-      setDist(distanceMeters(pos.coords.latitude, pos.coords.longitude, originLat, originLng)),
-    ).then((s) => (cancelled ? s.remove() : (sub = s)));
+    Location.watchPositionAsync({ accuracy: Location.Accuracy.High, distanceInterval: 5 }, (pos) => {
+      setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      setDist(distanceMeters(pos.coords.latitude, pos.coords.longitude, originLat, originLng));
+    }).then((s) => (cancelled ? s.remove() : (sub = s)));
     return () => {
       cancelled = true;
       sub?.remove();
@@ -67,15 +78,17 @@ export default function Game() {
     );
   }
 
-  const me = room.players.find((p) => p.id === player?.id);
+  const meP = room.players.find((p) => p.id === player?.id);
   const serverNow = now + clockOffset;
   const start = new Date(room.startedAt).getTime();
   const waitEnd = start + room.config.waitMin * 60_000;
   const gameEnd = waitEnd + room.config.durationMin * 60_000;
-  const isHunter = me?.role === "hunter";
+  const isHunter = meP?.role === "hunter";
   const accent = isHunter ? colors.hunter : colors.hider;
   const outside = dist != null && dist > room.config.radiusM;
   const hunters = room.players.filter((p) => p.role === "hunter");
+  const alertEnd = room.alert ? new Date(room.alert.endsAt).getTime() : 0;
+  const alertActive = room.status === "playing" && alertEnd > serverNow;
   const phaseMs = room.status === "waiting" ? waitEnd - serverNow : gameEnd - serverNow;
   const phaseTotal = room.status === "waiting" ? room.config.waitMin * 60_000 : room.config.durationMin * 60_000;
   const progress = Math.min(1, Math.max(0, 1 - phaseMs / phaseTotal));
@@ -100,7 +113,7 @@ export default function Game() {
       <Screen scroll accent={accent} paused={room.status === "playing"}>
         <Reveal delay={0.1}>
           <Text style={[s.role, textGlow(accent, 16), { color: accent }]}>
-            {me?.role === "spectator" ? "ESPECTADOR" : isHunter ? "CAZADOR" : "ESCONDIDO"}
+            {meP?.role === "spectator" ? "ESPECTADOR" : isHunter ? "CAZADOR" : "ESCONDIDO"}
           </Text>
         </Reveal>
 
@@ -120,6 +133,8 @@ export default function Game() {
                   : "¡Escóndete! Los cazadores salen cuando acabe la cuenta atrás."
                 : isHunter
                   ? "Encuentra a los escondidos y escanea su QR."
+                  : meP?.role === "spectator"
+                  ? "Sigues la partida como espectador."
                   : "Que no te encuentren."}
             </Text>
           </>
@@ -161,6 +176,42 @@ export default function Game() {
           </View>
         )}
 
+        {alertActive && room.originLat != null && room.originLng != null && (
+          <Reveal>
+            <Pulse>
+              <Text style={[s.alertTitle, textGlow(colors.hunter, 18)]}>ALERTA · {fmt(alertEnd - serverNow)}</Text>
+            </Pulse>
+            <Text style={s.muted}>Los puntos son anónimos. Los rojos son cazadores.</Text>
+            <View style={{ height: 8 }} />
+            <AlertMap
+              origin={{ lat: room.originLat, lng: room.originLng }}
+              radiusM={room.config.radiusM}
+              points={points && points.alertId === room.alert?.id ? points.points : []}
+              me={me}
+            />
+          </Reveal>
+        )}
+
+        {room.status === "playing" && meP?.role === "hider" && (
+          <Button title="Mi QR" color={colors.hider} onPress={() => router.push(`/qr/${code}`)} />
+        )}
+        {room.status === "playing" && isHunter && (
+          <Button title="Escanear QR" onPress={() => router.push(`/scan/${code}`)} />
+        )}
+        {room.status === "playing" && room.ownerId === player?.id && !alertActive && (
+          <Button
+            title="Lanzar alerta ahora"
+            secondary
+            onPress={() => launchAlert(code).catch((e) => setAlertError(e instanceof Error ? e.message : "Error"))}
+          />
+        )}
+        {alertError ? <Text style={s.muted}>{alertError}</Text> : null}
+        {meP?.state === "captured" && room.status !== "finished" && (
+          <View style={s.warn}>
+            <Text style={s.warnText}>Te han capturado. Sigues viendo la partida como espectador.</Text>
+          </View>
+        )}
+
         <Heading>Cazadores</Heading>
         <Card>
           <Text style={s.hunters}>{hunters.map((h) => h.nickname).join("  ·  ") || "—"}</Text>
@@ -169,8 +220,16 @@ export default function Game() {
         {active && <Button title="Salir de la partida" secondary onPress={leave} />}
       </Screen>
 
-      {!revealed && room.status === "waiting" && me?.role && me.role !== "spectator" && (
-        <RoleReveal role={me.role} onDone={() => setRevealed(true)} />
+      {captured && !capturedShown && (
+        <RoleReveal
+          text={captured.onCapture === "hunter" ? "CAPTURADO\nAHORA CAZAS TÚ" : "CAPTURADO"}
+          color={colors.hunter}
+          shake
+          onDone={() => setCapturedShown(true)}
+        />
+      )}
+      {!revealed && room.status === "waiting" && meP?.role && meP.role !== "spectator" && (
+        <RoleReveal role={meP.role} onDone={() => setRevealed(true)} />
       )}
     </View>
   );
@@ -185,6 +244,7 @@ const s = StyleSheet.create({
   text: { color: colors.text, fontSize: 15, textAlign: "center", opacity: 0.85 },
   muted: { color: colors.muted, fontSize: 13, textAlign: "center" },
   warn: { backgroundColor: "rgba(255,46,77,0.16)", borderWidth: 1, borderColor: "rgba(255,46,77,0.5)", padding: 14, borderRadius: 12 },
+  alertTitle: { color: colors.hunter, fontSize: 26, fontWeight: "900", letterSpacing: 4, textAlign: "center" },
   warnText: { color: "#ffb4b4", fontSize: 14 },
   hunters: { color: colors.hunter, fontSize: 17, fontWeight: "800", textAlign: "center" },
 });

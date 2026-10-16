@@ -74,7 +74,7 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 - Roles y asignación al azar, máquina de estados (espera, juego, fin).
 - Envío de ubicación en segundo plano y radio de juego.
 
-**Fase 3: alerta y captura**
+**Fase 3: alerta y captura** (hecha)
 - Alerta automática y manual, con mapa anónimo y cazadores destacados.
 - QR propio y escáner, validación de captura en el servidor.
 - Estados capturado y espectador.

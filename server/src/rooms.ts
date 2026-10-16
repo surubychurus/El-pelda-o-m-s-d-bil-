@@ -5,6 +5,7 @@ import { z } from "zod";
 import { defaultConfig, roomConfigSchema, type RoomConfig } from "./config.js";
 import { db } from "./db/index.js";
 import { players, roomPlayers, rooms } from "./db/schema.js";
+import { activeAlert } from "./alerts.js";
 import { settleIfOver } from "./game.js";
 import { broadcast } from "./hub.js";
 
@@ -43,6 +44,7 @@ export async function snapshot(roomId: string) {
     .innerJoin(players, eq(players.id, roomPlayers.playerId))
     .where(eq(roomPlayers.roomId, roomId))
     .orderBy(asc(roomPlayers.joinedAt));
+  const alert = await activeAlert(roomId);
   return {
     code: room.code,
     status: room.status,
@@ -53,6 +55,7 @@ export async function snapshot(roomId: string) {
     originLat: room.originLat,
     originLng: room.originLng,
     winner: room.winner,
+    alert: alert ? { id: alert.id, endsAt: alert.endsAt.toISOString() } : null,
     serverNow: Date.now(),
   };
 }

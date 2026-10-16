@@ -37,7 +37,8 @@
           "isIosBackgroundLocationEnabled": true
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "@maplibre/maplibre-react-native"
     ],
     "extra": {
       "apiUrl": "https://api.tudominio.com"

@@ -67,6 +67,7 @@ export type Room = {
   originLat: number | null;
   originLng: number | null;
   winner: "hunters" | "hiders" | null;
+  alert: { id: string; endsAt: string } | null;
   serverNow: number;
 };
 
@@ -90,3 +91,25 @@ export const sendLocation = (code: string, lat: number, lng: number) =>
   request<{ ok: boolean }>(`/rooms/${code}/location`, { method: "POST", body: JSON.stringify({ lat, lng }) });
 
 export const getMyRoom = () => request<{ code: string; status: Room["status"] } | null>("/me/room");
+
+export type MapPoint = { lat: number; lng: number; hunter: boolean; age: number };
+
+export const launchAlert = (code: string) => request<{ ok: true }>(`/rooms/${code}/alert`, { method: "POST" });
+
+export const getMyQr = (code: string) => request<{ token: string }>(`/rooms/${code}/qr`);
+
+export const getPoints = (code: string) =>
+  request<{ alertId: string | null; points: MapPoint[] }>(`/rooms/${code}/points`);
+
+export const capture = (code: string, token: string, lat: number, lng: number) =>
+  request<{ ok: true; nickname: string }>(`/rooms/${code}/capture`, {
+    method: "POST",
+    body: JSON.stringify({ token, lat, lng }),
+  });
+
+// El QR lleva el código de sala y el token secreto del jugador
+export const qrPayload = (code: string, token: string) => `manhunt:${code}:${token}`;
+export function parseQr(data: string): { code: string; token: string } | null {
+  const m = /^manhunt:([A-Z]{4}):([A-Za-z0-9]{8,100})$/.exec(data.trim());
+  return m ? { code: m[1], token: m[2] } : null;
+}

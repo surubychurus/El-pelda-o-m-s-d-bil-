@@ -4,11 +4,24 @@ import { Animated, StyleSheet } from "react-native";
 import { colors, textGlow } from "../lib/theme";
 
 // Revelación del rol al empezar: destello, texto que entra con golpe y (si eres cazador) sacudida
-export function RoleReveal({ role, onDone }: { role: "hunter" | "hider"; onDone: () => void }) {
+export function RoleReveal({
+  role,
+  text,
+  color: colorProp,
+  shake,
+  onDone,
+}: {
+  role?: "hunter" | "hider";
+  text?: string;
+  color?: string;
+  shake?: boolean;
+  onDone: () => void;
+}) {
   const v = useRef({ op: new Animated.Value(0), sc: new Animated.Value(2.8), flash: new Animated.Value(0.9), x: new Animated.Value(0) }).current;
   const [hidden, setHidden] = useState(false);
-  const hunter = role === "hunter";
-  const color = hunter ? colors.hunter : colors.hider;
+  const hunter = shake ?? role === "hunter";
+  const color = colorProp ?? (role === "hunter" ? colors.hunter : colors.hider);
+  const label = text ?? (role === "hunter" ? "ERES\nCAZADOR" : "ERES\nESCONDIDO");
 
   useEffect(() => {
     const p = { op: 0, sc: 2.8, flash: 0.9, x: 0 };
@@ -39,9 +52,11 @@ export function RoleReveal({ role, onDone }: { role: "hunter" | "hider"; onDone:
     <Animated.View pointerEvents="none" style={[s.overlay, { opacity: v.op.interpolate({ inputRange: [0, 1], outputRange: [0, 1] }) }]}>
       <Animated.View style={[s.flash, { backgroundColor: color, opacity: v.flash }]} />
       <Animated.Text
+        numberOfLines={2}
+        adjustsFontSizeToFit
         style={[s.text, textGlow(color, 28), { color, transform: [{ translateX: v.x }, { scale: v.sc }] }]}
       >
-        {hunter ? "ERES\nCAZADOR" : "ERES\nESCONDIDO"}
+        {label}
       </Animated.Text>
     </Animated.View>
   );
@@ -50,5 +65,5 @@ export function RoleReveal({ role, onDone }: { role: "hunter" | "hider"; onDone:
 const s = StyleSheet.create({
   overlay: { ...(StyleSheet.absoluteFill as object), backgroundColor: "rgba(7,8,13,0.88)", alignItems: "center", justifyContent: "center", zIndex: 10 },
   flash: { ...(StyleSheet.absoluteFill as object) },
-  text: { fontSize: 54, fontWeight: "900", letterSpacing: 6, textAlign: "center", lineHeight: 58 },
+  text: { fontSize: 46, fontWeight: "900", letterSpacing: 4, textAlign: "center", lineHeight: 52, paddingHorizontal: 20 },
 });

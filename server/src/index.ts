@@ -6,6 +6,7 @@ import Fastify from "fastify";
 import { z } from "zod";
 import { db } from "./db/index.js";
 import { players } from "./db/schema.js";
+import { registerAlertRoutes } from "./alerts.js";
 import { registerGameRoutes, startScheduler } from "./game.js";
 import { subscribe, unsubscribe } from "./hub.js";
 import { getRoomByCode, registerRoomRoutes, snapshot } from "./rooms.js";
@@ -68,6 +69,7 @@ app.patch("/me", { preHandler: authenticate }, async (req, reply) => {
 
 registerRoomRoutes(app);
 registerGameRoutes(app);
+registerAlertRoutes(app);
 startScheduler();
 
 // Tiempo real: el cliente se conecta con ?token= y envía {type:"subscribe", code}
@@ -89,7 +91,7 @@ app.get("/ws", { websocket: true }, (socket, req) => {
         socket.send(JSON.stringify({ type: "error", error: "No estás en esta sala" }));
         return;
       }
-      subscribe(room.id, socket);
+      subscribe(room.id, socket, playerId);
       socket.send(JSON.stringify({ type: "room", room: snap }));
     } catch {
       socket.send(JSON.stringify({ type: "error", error: "Mensaje inválido" }));

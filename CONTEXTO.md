@@ -16,7 +16,7 @@ App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos,
 - **App:** Expo (React Native + TypeScript), Expo Router, Three.js (`@react-three/fiber`) para el radar 3D de fondo y GSAP para animaciones.
 - **Servidor:** Node + Fastify + WebSocket, JWT propio. Corre en el **VPS del usuario** (Ubuntu), con Caddy para HTTPS y systemd.
 - **Base de datos:** **Neon** (Postgres) con Drizzle y el driver `pg`. Proyecto del usuario: org `org-hidden-sea-17300164`, proyecto `holy-scene-89752778`, rama `production`.
-- **Mapa (pendiente):** recomendado MapLibre con OpenFreeMap (sin clave).
+- **Mapa:** MapLibre (`@maplibre/maplibre-react-native` v11) con los mapas gratuitos de OpenFreeMap, estilo `dark`, sin clave. Requiere build de desarrollo (no funciona en Expo Go). En web hay un radar plano de respaldo (`components/AlertMap.tsx`).
 
 ## Estado (rama `ccr-cbe32dbd-uiuaay`)
 | Fase | Estado |
@@ -25,7 +25,7 @@ App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos,
 | 1 Salas: crear, unirse, lobby en tiempo real, configuración | Hecha |
 | 2 Partida: empezar, roles, fases con cuenta atrás, ubicación en segundo plano, radio | Hecha |
 | Estilo: radar 3D (Three.js) y animaciones (GSAP) | Hecho |
-| 3 Alerta y captura: mapa anónimo, QR, escáner, validación en servidor | **Pendiente (siguiente)** |
+| 3 Alerta y captura: mapa anónimo (MapLibre), QR, escáner, validación en servidor | Hecha (sin probar en móvil) |
 | 4 Pulido: notificaciones push, resultados, reconexión, pruebas reales | Pendiente |
 | 5 Tiendas: cuentas reales, permisos y privacidad | A futuro |
 
@@ -36,6 +36,7 @@ App móvil (Android e iOS) de **manhunt en la vida real** para jugar con amigos,
 
 ## Qué se probó y qué no
 - **Probado** contra un Postgres local: todo el servidor (salas, configuración, WebSocket, expulsar, salir, empezar, fases, fin por tiempo, "volver a tu partida"). Las pantallas se vieron en navegador con el 3D renderizado por software.
+- **Fase 3 probada en servidor:** alerta automática y manual, puntos anónimos por WebSocket (sin ids; cada uno sin el suyo), capturas con QR (rol, estado, distancia máxima 50 m, repetidas, fin de partida) y los dos modos de captura (eliminado / pasa a cazador). El mapa se vio en una vista previa web con `maplibre-gl`; el MapLibre nativo y el escáner de cámara NO se han ejecutado en un móvil.
 - **No probado:** la app en un móvil real (ubicación en segundo plano, permisos, rendimiento del 3D), ni nada contra el Neon real del usuario, ni el despliegue en el VPS.
 - El bundle de Android compila (`npx expo export --platform android`).
 
