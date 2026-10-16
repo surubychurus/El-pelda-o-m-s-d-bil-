@@ -1,7 +1,9 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { createRoom } from "../lib/api";
 import { useSession } from "../lib/session";
+import { Button } from "../lib/ui";
 
 export default function Home() {
   const { player, rename, logout } = useSession();
@@ -37,7 +39,20 @@ export default function Home() {
       )}
       {error ? <Text style={s.error}>{error}</Text> : null}
 
-      <Text style={s.soon}>Crear y unirse a salas llega en la fase 1.</Text>
+      <View style={{ gap: 12, marginVertical: 24 }}>
+        <Button
+          title="Crear sala"
+          onPress={async () => {
+            try {
+              const room = await createRoom();
+              router.push(`/room/${room.code}`);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "No se pudo crear la sala");
+            }
+          }}
+        />
+        <Button title="Unirse con código" secondary onPress={() => router.push("/join")} />
+      </View>
 
       <Pressable
         onPress={async () => {
@@ -55,7 +70,6 @@ const s = StyleSheet.create({
   container: { flex: 1, padding: 24, gap: 16, justifyContent: "center" },
   hello: { color: "#fff", fontSize: 28, fontWeight: "700" },
   hint: { color: "#777", fontSize: 14 },
-  soon: { color: "#aaa", fontSize: 16, marginVertical: 24 },
   row: { flexDirection: "row", gap: 8 },
   input: { flex: 1, backgroundColor: "#222", color: "#fff", padding: 12, borderRadius: 10, fontSize: 18 },
   small: { backgroundColor: "#e63946", paddingHorizontal: 16, justifyContent: "center", borderRadius: 10 },

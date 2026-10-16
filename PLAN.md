@@ -4,7 +4,7 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 
 ## Stack
 - **App:** Expo (React Native + TypeScript), Expo Router.
-- **Base de datos:** Neon (Postgres serverless), con Drizzle ORM.
+- **Base de datos:** Neon (Postgres), con Drizzle ORM y el driver `pg` (conexión TCP normal, sin necesidad del driver serverless porque el servidor corre en un VPS).
 - **Backend:** Node + TypeScript con Fastify y WebSocket (`ws`). Neon solo es base de datos, así que el servidor propio hace el tiempo real, el login y las validaciones. Se despliega en un host con procesos persistentes (Fly.io o Render, a decidir), porque Vercel no mantiene WebSockets.
 - **Login:** apodo, sin registro. El servidor crea un usuario por instalación y emite un JWT. Más adelante se puede vincular un email o Google a esa misma cuenta sin perder datos.
 - **Mapa:** MapLibre.
@@ -60,12 +60,12 @@ App móvil (Android e iOS) para jugar al manhunt por la ciudad con amigos. Para 
 
 ## Fases
 
-**Fase 0: base** (pendiente)
+**Fase 0: base** (hecha)
 - Proyecto Expo, navegación y tema.
 - Servidor Fastify, base de datos en Neon y migraciones con Drizzle.
 - Login con apodo y JWT.
 
-**Fase 1: salas**
+**Fase 1: salas** (hecha)
 - Crear sala, unirse con código, lobby en tiempo real.
 - Pantalla de configuración del creador.
 

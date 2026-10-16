@@ -17,7 +17,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
-      "content-type": "application/json",
+      ...(init.body ? { "content-type": "application/json" } : {}),
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
   });
@@ -39,3 +39,37 @@ export const getMe = () => request<Player>("/me");
 
 export const changeNickname = (nickname: string) =>
   request<Player>("/me", { method: "PATCH", body: JSON.stringify({ nickname }) });
+
+export type RoomConfig = {
+  mode: "classic" | "teams";
+  hunterCount: number;
+  hunterPick: "random" | "manual";
+  hunterId: string | null;
+  durationMin: number;
+  waitMin: number;
+  radiusM: number;
+  alertEveryMin: number;
+  alertDurationSec: number;
+  onCapture: "eliminated" | "hunter";
+};
+
+export type Room = {
+  code: string;
+  status: "lobby" | "waiting" | "playing" | "finished";
+  ownerId: string;
+  config: RoomConfig;
+  players: Player[];
+};
+
+export const createRoom = () => request<Room>("/rooms", { method: "POST" });
+
+export const joinRoom = (code: string) =>
+  request<Room>("/rooms/join", { method: "POST", body: JSON.stringify({ code }) });
+
+export const updateConfig = (code: string, config: RoomConfig) =>
+  request<Room>(`/rooms/${code}/config`, { method: "PATCH", body: JSON.stringify(config) });
+
+export const leaveRoom = (code: string) => request<{ ok: true }>(`/rooms/${code}/leave`, { method: "POST" });
+
+export const kickPlayer = (code: string, playerId: string) =>
+  request<{ ok: true }>(`/rooms/${code}/kick`, { method: "POST", body: JSON.stringify({ playerId }) });

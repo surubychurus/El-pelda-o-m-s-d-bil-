@@ -8,6 +8,13 @@
       "when": 1792116724700,
       "tag": "0000_famous_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792117215462,
+      "tag": "0001_volatile_zombie",
+      "breakpoints": true
     }
   ]
 }

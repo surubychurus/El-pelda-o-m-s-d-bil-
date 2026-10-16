@@ -42,6 +42,7 @@ export const roomPlayers = pgTable(
     role: playerRole("role"),
     state: playerState("state").notNull().default("alive"),
     qrToken: text("qr_token").notNull(),
+    joinedAt: timestamp("joined_at").notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.roomId, t.playerId] })],
 );

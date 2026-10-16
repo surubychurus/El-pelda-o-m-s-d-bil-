@@ -1,0 +1,1 @@
+ALTER TABLE "room_players" ADD COLUMN "joined_at" timestamp DEFAULT now() NOT NULL;

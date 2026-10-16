@@ -6,6 +6,8 @@ import Fastify from "fastify";
 import { z } from "zod";
 import { db } from "./db/index.js";
 import { players } from "./db/schema.js";
+import { subscribe, unsubscribe } from "./hub.js";
+import { getRoomByCode, registerRoomRoutes, snapshot } from "./rooms.js";
 
 const secret = process.env.JWT_SECRET;
 if (!secret) throw new Error("Falta JWT_SECRET");
@@ -14,6 +16,15 @@ const app = Fastify({ logger: true });
 await app.register(cors, { origin: true });
 await app.register(jwt, { secret });
 await app.register(websocket);
+
+// Acepta POST con content-type json y cuerpo vacío (p. ej. crear sala o salir)
+app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => {
+  try {
+    done(null, body ? JSON.parse(body as string) : {});
+  } catch {
+    done(new Error("JSON inválido"), undefined);
+  }
+});
 
 type Auth = { sub: string };
 
@@ -54,15 +65,35 @@ app.patch("/me", { preHandler: authenticate }, async (req, reply) => {
   return player;
 });
 
-// Canal de tiempo real: de momento solo comprueba el token (fase 1 añade las salas)
+registerRoomRoutes(app);
+
+// Tiempo real: el cliente se conecta con ?token= y envía {type:"subscribe", code}
 app.get("/ws", { websocket: true }, (socket, req) => {
   const token = new URL(req.url, "http://x").searchParams.get("token") ?? "";
+  let playerId: string;
   try {
-    const { sub } = app.jwt.verify<Auth>(token);
-    socket.send(JSON.stringify({ type: "hello", playerId: sub }));
+    playerId = app.jwt.verify<Auth>(token).sub;
   } catch {
     socket.close(4401, "unauthorized");
+    return;
   }
+  socket.on("message", async (raw: Buffer) => {
+    try {
+      const msg = z.object({ type: z.literal("subscribe"), code: z.string().length(4) }).parse(JSON.parse(raw.toString()));
+      const room = await getRoomByCode(msg.code);
+      const snap = room && (await snapshot(room.id));
+      if (!room || !snap?.players.some((p) => p.id === playerId)) {
+        socket.send(JSON.stringify({ type: "error", error: "No estás en esta sala" }));
+        return;
+      }
+      subscribe(room.id, socket);
+      socket.send(JSON.stringify({ type: "room", room: snap }));
+    } catch {
+      socket.send(JSON.stringify({ type: "error", error: "Mensaje inválido" }));
+    }
+  });
+  socket.on("close", () => unsubscribe(socket));
+  socket.send(JSON.stringify({ type: "hello", playerId }));
 });
 
 await app.listen({ port: Number(process.env.PORT ?? 3000), host: "0.0.0.0" });
