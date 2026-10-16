@@ -1,0 +1,4 @@
+# Cambia api.tudominio.com por tu subdominio
+api.tudominio.com {
+	reverse_proxy localhost:3000
+}
